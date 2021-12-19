@@ -24,6 +24,12 @@ class Config():
         self.trials_per_block = None #500
         self.variable_trials_per_block = [500, 500, 800, 600, 800, 600, 800, 600, 600, 800, 800, 600]
         #self.variable_trials_per_block = [500, 500, 400, 300, 400, 300, 400, 300, 300, 400, 400, 300]
+        self.Nblocks = 10                   # number of blocks for the simulation
+       	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
+        # self.block_schedule = ['90', '10', '90', '30', '50', '70', '10', '50', '90', '30', '70', '10']
+        self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
+        
+        # general params
         self.tau = 0.02
         self.dt = 0.001
         self.tsteps = 200                   # number of timesteps in a trial
@@ -31,26 +37,19 @@ class Config():
         self.response_delay = 0             # time between cue end and begin response, if 0 all trial is averaged for response
         self.noiseSD = 1e-3
         self.learning_rate = 5e-6  # too high a learning rate makes the output weights change too much within a trial / training cycle,
-        self.Nblocks = 10                   # number of blocks for the simulation
-       	#self.block_schedule = ['10', '90'] * 1 #['30', '90', '10', '90', '70', '30', '10', '70'] 
-        self.block_schedule = ['90', '10', '90', '30', '50', '70', '10', '50', '90', '30', '70', '10']
-        self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
                   
         #Network architecture
-        self.use_neural_q_values = False
-        self.neural_vmPFC = False
         self.wV_structured = True
-        self.Ninputs = 4                      # total number of inputs
-        self.Ncues = 2                     # How many of the inputs are task cues (UP, DOWN)
-        self.Nmd    = 2                       # number of MD cells.
-        self.Npfc = 500                      # number of pfc neurons
-        self.Nofc = 500                      # number of ofc neurons
-        self.Nsub = 200                     # number of neurons per cue
-        self.Nout = 2                       # number of outputs
+        self.Ninputs = 4                 # Total number of inputs
+        self.Ncues = 2                   # How many of the inputs are task cues (UP, DOWN)
+        self.Nmd    = 2                  # number of MD cells.
+        self.Npfc = 500                  # number of pfc neurons
+        self.Nofc = 500                  # number of ofc neurons
+        self.Nsub = 200                  # number of neurons per cue
+        self.Nout = 2                    # number of outputs
         self.G = 1                       # Controls level of excitation in the net
         self.reLoadWeights = False
 
-                          #  then the output interference depends on the order of cues within a cycle typical values is 1e-5, can vary from 1e-4 to 1e-6
         self.train = True   # swich training on or off.
         self.tauError = 0.001            # smooth the error a bit, so that weights don't fluctuate
         self.modular  = False                # Assumes PFC modules and pass input to only one module per tempral context.
@@ -64,16 +63,22 @@ class Config():
         self.cueFactor = 0.5 #args_dict['CueFactor']#0.5# 0.75  1.5 Ali halved it when I added cues going to both PFC regions, i.e two copies of input. But now working ok even with only one copy of input.
         self.delayed_response = 0 #50       # in ms, Reward model based on last 50ms of trial, if 0 take mean error of entire trial. Impose a delay between cue and stimulus.
 
+        # Model ablations:
+        self.allow_add_effect = True       # Set to False to ablate MD additive effects
+        self.allow_mul_effect = True     # Set to False to ablate MD multiplicative effects
+        self.allow_value_inputs = True     # set to false to Zero out the weights of the value inputs 
+        self.allow_ofc_control_to_no_pfc = self.Npfc    # Limit ofc effect to certain no of PFC cells.
+        
         # OFC
         self.follow = 'behavioral_context' # 'association_levels'  # in estimating baseline_err whether to track each context (match, non-match) or more granularily track assocation levels 
         self.horizon = 10               # how many trials to look back when calculating Q values for actions available.
         self.OFC_reward_hx = True           # model ofc as keeping track of current strategy and recent reward hx for each startegy.
         self.use_context_belief_to_switch_MD = True  # input routing per current context or per context belief
-        self.no_of_trials_with_ofc_signal = 20 #no of trials with OFC sparse switch control signal.
-        self.ofc_to_md_active = True
+        self.no_of_trials_with_ofc_signal = 20 # (Deprecated) no of trials with OFC sparse switch control signal.
+        self.ofc_to_MD_gating_variable = 0 #Gating OFC to MD or to PFC connections. Initialized to 0 (closed)
+        self.ofc_to_md_active = False  # two Variables to decide whether OFC switch signal goes to MD or to PFC. (Might want to test both active at some point)
         self.ofc_to_PFC_active = False
-        self.ofc_effect = 0.0  # magnitude of input from oFC toone MD neuron and inhibition to the other. 
-        self.ofc_effect_magnitude = 0.0
+        self.ofc_effect_magnitude = 0.0    # THe peak of the gating value from OFC to MD. If 0, no flow of info from OFC to MD.
         self.ofc_effect_momentum = 0.9
         self.positiveRates = True           # whether to clip rates to be only positive, G must also change
 
@@ -92,4 +97,61 @@ class Config():
         if self.reinforceReservoir:
             self.perturbProb /= 10
 
+## Configs for common experiments.
+class Compare_to_humans_config(Config):
+    def __init__(self, args_dict={}):
+        super().__init__(args_dict)
+        self.trials_per_block = None #500
+        self.variable_trials_per_block = [500, 500, 800, 600, 800, 600, 800, 600, 600, 800, 800, 600]
+        #self.variable_trials_per_block = [500, 500, 400, 300, 400, 300, 400, 300, 300, 400, 400, 300]
+        self.block_schedule = ['90', '10', '90', '30', '50', '70', '10', '50', '90', '30', '70', '10']
+        self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
 
+class Paramater_search_Config(Config):
+    def __init__(self, args_dict={'MDeffect': 'on'}):
+        super().__init__(args_dict)
+        if args_dict['MD_multi'] =='on':
+            self.MDeffect = True
+            self.MDremovalCompensationFactor = 1.0
+        else: 
+            self.MDeffect = False
+            self.MDremovalCompensationFactor = 1.3
+        self.MDamplification = 30.
+        
+        self.variable_trials_per_block = [500] * 6
+       	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
+        self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
+
+class MD_ablation_Config(Config):
+    def __init__(self, args_dict={'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True}):
+        super().__init__(args_dict)
+        if args_dict['MDeffect']:
+            self.MDeffect = True
+            # self.MDremovalCompensationFactor = 1.0
+        else: 
+            self.MDeffect = False
+            self.MDremovalCompensationFactor = 1.3
+        self.allow_add_effect = args_dict['MD_add_effect']
+        self.allow_mul_effect = args_dict['MD_mul_effect']
+        self.variable_trials_per_block = [500] * 6
+       	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
+        self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
+
+class vmPFC_ablation_Config(Config):
+    def __init__(self, args_dict={'vmPFC_inputs': 'on'}):
+        super().__init__(args_dict)
+        if args_dict['vmPFC_inputs'] =='on':
+            self.allow_value_inputs = True
+        else: 
+            self.allow_value_inputs = False
+    
+        self.variable_trials_per_block = [500] * 6
+       	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
+        self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
+
+class OFC_control_Config(Config):
+    def __init__(args_dict={'ofc_target': 'MD', 'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500}):
+        super().__init__(self, args_dict)
+        self.ofc_control_schedule = ['of'] *4  + ['on'] * 40
+        self.variable_trials_per_block = [500] * 6 + [100] * 6 
+       	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 

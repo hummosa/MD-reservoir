@@ -3,9 +3,8 @@
 
 """Extends code by Aditya Gilra. Some reservoir tweaks are inspired by Nicola and Clopath, arxiv, 2016 and Miconi 2016."""
 
-import torch
 import json
-from config import Config
+from config import Compare_to_humans_config, Config, MD_ablation_Config, OFC_control_Config, vmPFC_ablation_Config
 from error_computations import Error_computations
 # from refactor.ofc_trailtype import OFC as OFC_Trial
 from vmPFC_k_means import OFC
@@ -86,9 +85,9 @@ def train(pfcmd, data_gen, config):
                             train=config.train)
 
         switch = error_computations.update_v(cue, outs, target, MDouts.mean(axis=0), routs.mean(axis=0))
-        config.ofc_effect = config.ofc_effect_momentum * config.ofc_effect
+        config.ofc_to_MD_gating_variable = config.ofc_effect_momentum * config.ofc_to_MD_gating_variable  # config.ofc_to_MD_gating_variable decays exponentially.
         if switch and (ofc_control == 'on'): 
-            config.ofc_effect = config.ofc_effect_magnitude
+            config.ofc_to_MD_gating_variable = config.ofc_effect_magnitude  #whenever a switch occurs, config.ofc_to_MD_gating_variable is reset to high value ofc_effect_magnitude
 
         # if traini%250==0: ofc_plots(error_computations, traini, '_')
 
@@ -240,7 +239,7 @@ def train(pfcmd, data_gen, config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    group = parser.add_argument("exp_name", default="data_runs",
+    group = parser.add_argument("exp_name", default="temp",
                                 nargs='?',  type=str, help="pass a str for experiment name")
     group = parser.add_argument(
         "seed", default=2, nargs='?',  type=float, help="simulation seed")
@@ -256,19 +255,34 @@ if __name__ == "__main__":
     group = parser.add_argument("--save_data_by_trial", default=False,
                                 nargs='?',  type=str, help="pass True to save data by trial")
     args = parser.parse_args()
-    # can  assign args.x and args.y to vars
-    # OpenMind shared directory: "/om2/group/halassa/PFCMD-ali-sabrina"
-    args_dict = {'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect': args.var3,
-                 'outdir':  args.outdir, 'exp_name': args.exp_name, 'seed': int(args.seed),
-                 "save_data_by_trial": args.save_data_by_trial} # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
+    # OpenMind sharedgjit directory: "/om2/group/halassa/PFCMD-ali-sabrina"
+    args_dict = {'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
+                 'outdir':  args.outdir,  'seed': int(args.seed),
+                 'exp_name': args.exp_name,
+                 'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][1], #
+                 "save_data_by_trial": args.save_data_by_trial,
+                 'vmPFC_inputs': 'on',
+                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
+                 'ofc_target': 'MD', 'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500,
+                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
 
-    config = Config(args_dict)
+    if args_dict['exp_type'] == 'MD_ablation': 
+        config = MD_ablation_Config(args_dict)
+    elif args_dict['exp_type'] == 'Compare_to_human_data':
+        config = Compare_to_humans_config(args_dict) 
+    elif args_dict['exp_type'] == 'vmPFC_ablation':
+        config = vmPFC_ablation_Config(args_dict) 
+    elif args_dict['exp_type'] == 'OFC_ablation': 
+        config = OFC_control_Config(args_dict)
+    else: 
+        config = Config(args_dict)
     # vm_config.Ninputs = 6
     data_generator = data_generator(config)
 
     config.MDremovalCompensationFactor = args_dict['Gcompensation']
     config.MDeffect = bool(args_dict['MDeffect'])
-    config.ofc_effect_magnitude = args_dict['OFC_effect']
+    config.ofc_effect_magnitude = args_dict['OFC_effect_magnitude'] # set OFC effect magnitude to 1 for maximal effect or 0 to disconnect OFC.
+    config.allow_value_inputs= True
 
     ofc = OFC()
     error_computations = Error_computations(config)

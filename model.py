@@ -117,6 +117,8 @@ class PFCMD():
                 self.wIn = np.random.normal(size=(config.Npfc, config.Ncues), loc=(
                     lowcue+highcue)/2, scale=input_variance) * config.cueFactor
                 self.wIn = np.clip(self.wIn, 0, 1)
+            if not config.allow_value_inputs:
+                self.wV = np.zeros((config.Npfc, 2))
 
         self.MDpreTrace = np.zeros(shape=(config.Npfc))
 
@@ -168,9 +170,9 @@ class PFCMD():
             outAdd = np.dot(self.wOut, rout)
 
             # Gather MD inputs
-            if config.ofc_to_md_active:                     
+            if config.ofc_to_md_active:
                 input_from_ofc = np.dot(error_computations.wOFC2MD , error_computations.vec_current_context )
-                MDinp += config.ofc_effect * input_from_ofc
+                MDinp += config.ofc_to_MD_gating_variable * input_from_ofc
 
             if config.positiveRates:
                 MDinp += config.dt/config.tau * \
@@ -192,22 +194,26 @@ class PFCMD():
 
             if MDeffect:
                 # Add multplicative amplification of recurrent inputs.
-                self.MD2PFCMult = np.dot(
-                    self.wMD2PFCMult * config.MDamplification, MDout)
-                if cuda:
-                    with torch.no_grad():
-                        xadd = (1.+self.MD2PFCMult) * torch.matmul(self.Jrec,
-                                                                   torch.Tensor(rout).cuda()).detach().cpu().numpy()
-                else:
-                    xadd = (1.+self.MD2PFCMult) * np.dot(self.Jrec, rout)
+                if config.allow_mul_effect:
+                    self.MD2PFCMult = np.dot(self.wMD2PFCMult * config.MDamplification, MDout)
+                else: # to ablate multi effect, fix MD pattern
+                    self.MD2PFCMult = np.dot(self.wMD2PFCMult * config.MDamplification, np.array([0, 1]))
+                xadd = (1.+self.MD2PFCMult) * np.dot(self.Jrec, rout)
+                
                 # Additive MD input to PFC
-                xadd += np.dot(self.wMD2PFC, MDout)
+                if config.allow_add_effect:
+                    xadd += np.dot(self.wMD2PFC, MDout)
+                else: # to ablate add effect, fix MD pattern
+                    xadd += np.dot(self.wMD2PFC, np.array([0, 1]))
             else:
                 xadd = np.dot(self.Jrec, rout)
 
             if config.ofc_to_PFC_active:                     
                 input_from_ofc = np.dot(error_computations.wOFC2dlPFC , error_computations.vec_current_context )
-                xadd += config.ofc_effect * input_from_ofc
+                ofc_to_pfc_mask = np.zeros_like(input_from_ofc)
+                ofc_to_pfc_mask[:config.config.allow_ofc_control_to_no_pfc] = np.ones_like(input_from_ofc)[:config.config.allow_ofc_control_to_no_pfc]
+                
+                xadd += config.ofc_to_MD_gating_variable * input_from_ofc * ofc_to_pfc_mask 
 
             if i < config.cuesteps:
                 # if MDeffect and useMult:
