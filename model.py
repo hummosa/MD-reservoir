@@ -202,9 +202,9 @@ class PFCMD():
                 
                 # Additive MD input to PFC
                 if config.allow_add_effect:
-                    xadd += np.dot(self.wMD2PFC, MDout)
+                    xadd += np.dot(self.wMD2PFC , MDout)
                 else: # to ablate add effect, fix MD pattern
-                    xadd += np.dot(self.wMD2PFC, np.array([0, 1]))
+                    xadd += np.dot(self.wMD2PFC , np.array([0, 1]))
             else:
                 xadd = np.dot(self.Jrec, rout)
 
@@ -339,10 +339,10 @@ class PFCMD():
 
 
             # synaptic scaling and competition both ways at MD-PFC synapses.
-            self.wPFC2MD /= np.linalg.norm(self.wPFC2MD) / \
-                self.initial_norm_wPFC2MD
-            self.wMD2PFC /= np.linalg.norm(self.wMD2PFC) / \
-                self.initial_norm_wMD2PFC
+            self.wPFC2MD /= np.linalg.norm(self.wPFC2MD) / self.initial_norm_wPFC2MD
+            self.wMD2PFC /= np.linalg.norm(self.wMD2PFC) / self.initial_norm_wMD2PFC
+            # stats(self.wMD2PFC, 'add')
+            # stats(self.wMD2PFCMult, 'multi')
 
         baseline_err = error_computations.update_baseline_err(all_contexts_err)
         # self.monitor.log({'qvalue0':error_computations.Q_values[0], 'qvalue1':error_computations.Q_values[1]})

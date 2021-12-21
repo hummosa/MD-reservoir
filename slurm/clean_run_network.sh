@@ -4,5 +4,5 @@
 #SBATCH -c 1 
 #SBATCH --mem=12G
 #SBATCH --job-name=$1
-#SBATCH --output=./slurm/%j
+#SBATCH --output=./output/%j
 python run_network.py $1 

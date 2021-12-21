@@ -175,15 +175,18 @@ def train(pfcmd, data_gen, config):
     #plot_what_i_want(area_to_plot, weights, rates, config)
     # ofc_plots(error_computations, 2500, 'end_')
     #from IPython import embed; embed()
-    dirname = config.args_dict['outdir'] + \
-        "/"+config.args_dict['exp_name']+"/"
-    parm_summary = str(list(config.args_dict.values())[0])+"_"+str(
-        list(config.args_dict.values())[1])+"_"+str(
-        list(config.args_dict.values())[2])+"_"+str(list(config.args_dict.values())[5])
+    dirname = config.args_dict['outdir'] +"/"+config.args_dict['exp_name']+"/"+config.args_dict['exp_type']+"/"
+    # parm_summary = str(list(config.args_dict.values())[0])+"_"+str(
+    #     list(config.args_dict.values())[1])+"_"+str(
+    #     list(config.args_dict.values())[2])+"_"+str(list(config.args_dict.values())[5])
+    
+    parameters_to_summ = ['seed', 'var1', 'var2', 'var3']
+    parm_summary = "".join([f"{config.args_dict[par]}_" for par in parameters_to_summ] )
+    
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     def fn(fn_str): return os.path.join(dirname, 'fig_{}_{}_{}.{}'.format(
-        fn_str, parm_summary, time.strftime("%Y%m%d-%H%M%S"), config.figure_format))
+        fn_str, parm_summary, time.strftime("%m-%d_%H:%M"), config.figure_format))
 
     if config.plotFigs:  # Plotting and writing results. Needs cleaned up.
         area_to_plot.figWeights.savefig(fn('weights'),  transparent=True,dpi=pltu.fig_dpi,
@@ -247,27 +250,32 @@ if __name__ == "__main__":
     group = parser.add_argument(
         "--var1", default=1, nargs='?', type=float, help="arg_1")
     group = parser.add_argument(
-        "--var2", default=1.3, nargs='?', type=float, help="arg_2")
+        "--var2", default=1., nargs='?', type=float, help="arg_2")
     group = parser.add_argument(
-        "--var3", default=0.0, nargs='?', type=float, help="arg_3")
+        "--var3", default=1.0, nargs='?', type=float, help="arg_3")
     group = parser.add_argument("--outdir", default="./results2",
                                 nargs='?',  type=str, help="pass a str for data directory")
     group = parser.add_argument("--save_data_by_trial", default=False,
                                 nargs='?',  type=str, help="pass True to save data by trial")
     args = parser.parse_args()
-    # OpenMind sharedgjit directory: "/om2/group/halassa/PFCMD-ali-sabrina"
-    args_dict = {'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
-                 'outdir':  args.outdir,  'seed': int(args.seed),
-                 'exp_name': args.exp_name,
-                 'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][1], #
-                 "save_data_by_trial": args.save_data_by_trial,
-                 'vmPFC_inputs': 'on',
-                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
-                 'ofc_target': 'MD', 'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500,
-                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
+    # OpenMind shared directory: "/om2/group/halassa/PFCMD-ali-sabrina"
+     # redefine some parameters for quick experimentation and argument passing to python file.
+     # Each type of Config for certain experimet will update only the relevant parameters from the args_dict
+    args_dict = {'outdir':  args.outdir,  'seed': int(args.seed),
+                # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
+                'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
+                'exp_name': args.exp_name,
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][1], #
+                "save_data_by_trial": args.save_data_by_trial,
+                'vmPFC_inputs': 'on',
+                'MDeffect': True, 'MD_add_effect': False, 'MD_mul_effect': True,
+                'ofc_target': 'MD', 'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500,
+                } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
 
     if args_dict['exp_type'] == 'MD_ablation': 
+        args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0})
         config = MD_ablation_Config(args_dict)
+        config.MDamplification = args.var1
     elif args_dict['exp_type'] == 'Compare_to_human_data':
         config = Compare_to_humans_config(args_dict) 
     elif args_dict['exp_type'] == 'vmPFC_ablation':
@@ -276,19 +284,11 @@ if __name__ == "__main__":
         config = OFC_control_Config(args_dict)
     else: 
         config = Config(args_dict)
-    # vm_config.Ninputs = 6
-    data_generator = data_generator(config)
 
-    config.MDremovalCompensationFactor = args_dict['Gcompensation']
-    config.MDeffect = bool(args_dict['MDeffect'])
-    config.ofc_effect_magnitude = args_dict['OFC_effect_magnitude'] # set OFC effect magnitude to 1 for maximal effect or 0 to disconnect OFC.
-    config.allow_value_inputs= True
+    ofc = OFC() # Sabrina's vmPFC model. 
+    error_computations = Error_computations(config) # Baseline error computation, OFC Bayesian model,  and overall error for node perturbation learning
 
-    ofc = OFC()
-    error_computations = Error_computations(config)
-
-    # redefine some parameters for quick experimentation here.
-    # config.no_of_trials_with_ofc_signal = int(args_dict['switches'])
+      # config.no_of_trials_with_ofc_signal = int(args_dict['switches'])
     # config.MDamplification = 30.  # args_dict['switches']
     # config.MDlearningBiasFactor = args_dict['MDactive']
 
@@ -299,7 +299,7 @@ if __name__ == "__main__":
         pfcmd.load(filename)
     t = time.perf_counter()
 
-    train(pfcmd , data_generator, config)
+    train(pfcmd , data_generator(config), config)
     
     print('training_time', (time.perf_counter() - t)/60, ' minutes')
     
