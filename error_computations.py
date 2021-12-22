@@ -208,15 +208,15 @@ class Error_computations:
             #     p_switch = np.math.pow(p_r, t) * np.math.pow(p_r, T-t)
 
         # NOTE: MD related computations. First associate to the right MD cell, then output inputs to add to MD next trial
+        self.vec_current_context = np.array([int(self.current_context=="MATCH"), int(self.current_context=="NON-MATCH")])
         if self.config.ofc_to_md_active:
-            self.vec_current_context = np.array([int(self.current_context=="MATCH"), int(self.current_context=="NON-MATCH")])
             self.wOFC2MD = self.wOFC2MD + np.outer( MDout-0.5, self.vec_current_context-0.5)
             self.wOFC2MD = self.wOFC2MD/np.linalg.norm(self.wOFC2MD)
             # print(self.wOFC2MD) [[ 0.5 -0.5]  Works great.
                                 #  [-0.5  0.5]]
         
         if self.config.ofc_to_PFC_active:
-            self.wOFC2dlPFC = self.wOFC2dlPFC + 1e-4 * np.outer( PFCmr-PFCmr.mean(), self.vec_current_context-0.5)
+            self.wOFC2dlPFC = self.wOFC2dlPFC + 1e-2 * np.outer( PFCmr-PFCmr.mean(), self.vec_current_context-0.5)
             self.wOFC2dlPFC = self.wOFC2dlPFC/(0.5* np.linalg.norm(self.wOFC2dlPFC))
 
         return (switch)

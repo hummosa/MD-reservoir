@@ -170,7 +170,7 @@ def train(pfcmd, data_gen, config):
     rates = [PFCrates, MDinputs, MDrates,
                 Outrates, Inputs, Targets, MSEs]
     # plot_q_values([vm_Outrates, vm_MDinputs])
-    plot_weights(area_to_plot, weights, config)
+    # plot_weights(area_to_plot, weights, config)
     plot_rates(area_to_plot, rates, config)
     #plot_what_i_want(area_to_plot, weights, rates, config)
     # ofc_plots(error_computations, 2500, 'end_')
@@ -189,8 +189,8 @@ def train(pfcmd, data_gen, config):
         fn_str, parm_summary, time.strftime("%m-%d_%H:%M"), config.figure_format))
 
     if config.plotFigs:  # Plotting and writing results. Needs cleaned up.
-        area_to_plot.figWeights.savefig(fn('weights'),  transparent=True,dpi=pltu.fig_dpi,
-                                facecolor='w', edgecolor='w', format=config.figure_format)
+        # area_to_plot.figWeights.savefig(fn('weights'),  transparent=True,dpi=pltu.fig_dpi,
+                                # facecolor='w', edgecolor='w', format=config.figure_format)
         area_to_plot.figOuts.savefig(fn('behavior'),  transparent=True,dpi=pltu.fig_dpi,
                                 facecolor='w', edgecolor='w', format=config.figure_format)
         #area_to_plot.figRates.savefig(fn('rates'),    transparent=True,dpi=pltu.fig_dpi,
@@ -205,23 +205,8 @@ def train(pfcmd, data_gen, config):
             area_to_plot.fig_monitor.savefig(
                 fn('monitor'), dpi=pltu.fig_dpi, facecolor='w', edgecolor='w', format=config.figure_format)
 
-        # output some variables of interest:
-        # md ampflication and % correct responses from model.
-    filename7 = os.path.join(dirname, 'values_of_interest.txt')
-    filename7exits = os.path.exists(filename7)
-    with open(filename7, 'a') as f:
-        if not filename7exits:
-            [f.write(head+'\t') for head in ['switches', 'LR', 'ofc',
-                                                'HebbT', '1st', '2nd', '3rd', '4th', 'avg1-3', 'mean', 'PFCavgFR\n']]
-        [f.write('{}\t '.format(val))
-            for val in [*config.args_dict.values()][:3] + [list(config.args_dict.values())[5]] ]
-        # {:.2e} \t {:.2f} \t'.format(config.args_dict['switches'], config.args_dict['MDlr'],config.args_dict['MDactive'] ))
-        for score in area_to_plot.score:
-            f.write('{:.2f}\t'.format(score))
-        f.write('{:.2f}\t'.format(PFCrates.mean()))
-        f.write('\n')
-
     np.save(fn('saved_Corrects')[:-4]+'.npy', area_to_plot.corrects)
+    np.save(fn('config')+'.npy', config)
     if config.saveData:  # output massive weight and rate files
         import pickle
         filehandler = open(fn('saved_rates')[:-4]+'.pickle', 'wb')
@@ -265,7 +250,7 @@ if __name__ == "__main__":
                 # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
                 'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
                 'exp_name': args.exp_name,
-                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][1], #
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][3], #
                 "save_data_by_trial": args.save_data_by_trial,
                 'vmPFC_inputs': 'on',
                 'MDeffect': True, 'MD_add_effect': False, 'MD_mul_effect': True,
@@ -282,6 +267,10 @@ if __name__ == "__main__":
         config = vmPFC_ablation_Config(args_dict) 
     elif args_dict['exp_type'] == 'OFC_ablation': 
         config = OFC_control_Config(args_dict)
+        if args.var1 >0: # OFC control is on oly if args.var1 is not 0
+            config.ofc_control_schedule = ['off'] *2  + ['on'] * 40
+        else:
+            config.ofc_control_schedule = ['off'] *40
     else: 
         config = Config(args_dict)
 

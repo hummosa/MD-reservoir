@@ -76,9 +76,9 @@ class Config():
         self.use_context_belief_to_switch_MD = True  # input routing per current context or per context belief
         self.no_of_trials_with_ofc_signal = 20 # (Deprecated) no of trials with OFC sparse switch control signal.
         self.ofc_to_MD_gating_variable = 0 #Gating OFC to MD or to PFC connections. Initialized to 0 (closed)
-        self.ofc_to_md_active = False  # two Variables to decide whether OFC switch signal goes to MD or to PFC. (Might want to test both active at some point)
+        self.ofc_to_md_active = True  # two Variables to decide whether OFC switch signal goes to MD or to PFC. (Might want to test both active at some point)
         self.ofc_to_PFC_active = False
-        self.ofc_effect_magnitude = 0.0    # THe peak of the gating value from OFC to MD. If 0, no flow of info from OFC to MD.
+        self.ofc_effect_magnitude = 1.0    # THe peak of the gating value from OFC to MD. If 0, no flow of info from OFC to MD.
         self.ofc_effect_momentum = 0.9
         self.positiveRates = True           # whether to clip rates to be only positive, G must also change
 
@@ -152,8 +152,12 @@ class vmPFC_ablation_Config(Config):
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
 
 class OFC_control_Config(Config):
-    def __init__(args_dict={'ofc_target': 'MD', 'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500}):
-        super().__init__(self, args_dict)
+    def __init__(self, args_dict={'ofc_target': 'MD', 'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500}):
+        super().__init__(args_dict)
         self.ofc_control_schedule = ['of'] *4  + ['on'] * 40
         self.variable_trials_per_block = [500] * 6 + [100] * 6 
        	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
+        self.allow_ofc_control_to_no_pfc = self.Npfc    # Limit ofc effect to certain no of PFC cells.
+        self.ofc_to_md_active = False  # two Variables to decide whether OFC switch signal goes to MD or to PFC. (Might want to test both active at some point)
+        self.ofc_to_PFC_active = True
+ 

@@ -211,7 +211,7 @@ class PFCMD():
             if config.ofc_to_PFC_active:                     
                 input_from_ofc = np.dot(error_computations.wOFC2dlPFC , error_computations.vec_current_context )
                 ofc_to_pfc_mask = np.zeros_like(input_from_ofc)
-                ofc_to_pfc_mask[:config.config.allow_ofc_control_to_no_pfc] = np.ones_like(input_from_ofc)[:config.config.allow_ofc_control_to_no_pfc]
+                ofc_to_pfc_mask[:config.allow_ofc_control_to_no_pfc] = np.ones_like(input_from_ofc)[:config.allow_ofc_control_to_no_pfc]
                 
                 xadd += config.ofc_to_MD_gating_variable * input_from_ofc * ofc_to_pfc_mask 
 
