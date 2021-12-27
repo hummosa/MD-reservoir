@@ -79,40 +79,40 @@ class Error_computations:
         self.trial_history.append(trial_type)
         if len(self.trial_history) > self.horizon: self.trial_history = self.trial_history[-self.horizon:]
 
-        likelihood = list(map(lambda trial_type:
-                              np.array([0.45, 0.55]) if trial_type is "MATCH" else np.array([0.55, 0.45]), self.trial_history))
-                            #   np.array([0.55, 0.45]) if trial_type == "MATCH" else np.array([0.45, 0.55]), self.trial_history))
-        likelihood = np.prod(np.array(likelihood), axis=0)
-        posterior = (likelihood * np.array([0.5, 0.5])) / np.sum(likelihood * np.array([0.5, 0.5]))
-        # posterior = (likelihood * self.prior) / np.sum(likelihood * self.prior)
-        # print(self.trial_history, posterior)
+        # likelihood = list(map(lambda trial_type:
+        #                       np.array([0.45, 0.55]) if trial_type == "MATCH" else np.array([0.55, 0.45]), self.trial_history))
+        #                     #   np.array([0.55, 0.45]) if trial_type == "MATCH" else np.array([0.45, 0.55]), self.trial_history))
+        # likelihood = np.prod(np.array(likelihood), axis=0)
+        # posterior = (likelihood * np.array([0.5, 0.5])) / np.sum(likelihood * np.array([0.5, 0.5]))
+        # # posterior = (likelihood * self.prior) / np.sum(likelihood * self.prior)
+        # # print(self.trial_history, posterior)
         T = len(self.trial_history)
-        self.prior = posterior
+        # self.prior = posterior
         
-        # TODO consider which model is used to estimte p(r|action), currently just using our MLE based estimator above.
-        # no but the above is the P(match_context)!! Not v1.... For that, I should use Sabrina's.
-        p_match, p_non_match = self.Sabrina_Q_values
+        # # TODO consider which model is used to estimte p(r|action), currently just using our MLE based estimator above.
+        # # no but the above is the P(match_context)!! Not v1.... For that, I should use Sabrina's.
+        # p_match, p_non_match = self.Sabrina_Q_values
 
 
-        p_sm, p_snm, p_ns = [], [], []
-        for t in range(T):
-            l_sm = np.math.pow(p_non_match, t) * np.math.pow(p_match, T-t)  #likelihood(switch_to_Match| horizon trials)     
-            l_snm= np.math.pow(p_match, t)     * np.math.pow(p_non_match, T-t) # likelihood(switch_to_Non-Match| trials) 
-            l_ns  = np.math.pow(p_non_match, T)                                 # likelihood(no_switch|trials)
-            # what about priors? p(switch_to_match)? that is affected by the last block change, and belief about current context.
-            # Or use priors as probabilities from previous trials. No_switch will be the biggest, but should keep it evolving over a short horizon. 
-            z = (l_sm + l_snm + l_ns) + 1e-6
-            p_sm.append(l_sm / z)
-            p_snm.append(l_snm / z)
-            p_ns.append(l_ns / z)
-            #p(r(0,t)| switch_at_t) p(switch_at_t)  / p(r(0,t))
+        # p_sm, p_snm, p_ns = [], [], []
+        # for t in range(T):
+        #     l_sm = np.math.pow(p_non_match, t) * np.math.pow(p_match, T-t)  #likelihood(switch_to_Match| horizon trials)     
+        #     l_snm= np.math.pow(p_match, t)     * np.math.pow(p_non_match, T-t) # likelihood(switch_to_Non-Match| trials) 
+        #     l_ns  = np.math.pow(p_non_match, T)                                 # likelihood(no_switch|trials)
+        #     # what about priors? p(switch_to_match)? that is affected by the last block change, and belief about current context.
+        #     # Or use priors as probabilities from previous trials. No_switch will be the biggest, but should keep it evolving over a short horizon. 
+        #     z = (l_sm + l_snm + l_ns) + 1e-6
+        #     p_sm.append(l_sm / z)
+        #     p_snm.append(l_snm / z)
+        #     p_ns.append(l_ns / z)
+        #     #p(r(0,t)| switch_at_t) p(switch_at_t)  / p(r(0,t))
         
-        #Integrating from all horizon:
-        p_sm_T = np.sum(p_sm)
-        p_snm_T = np.sum(p_snm)
-        p_ns_T = np.sum(p_ns)
+        # #Integrating from all horizon:
+        # p_sm_T = np.sum(p_sm)
+        # p_snm_T = np.sum(p_snm)
+        # p_ns_T = np.sum(p_ns)
 
-        self.p_sm_snm_ns = np.array ([p_sm_T, p_snm_T, p_ns_T])
+        # self.p_sm_snm_ns = np.array ([p_sm_T, p_snm_T, p_ns_T])
 
         # ALTERNATIVELY:
 
@@ -158,7 +158,7 @@ class Error_computations:
         if len(self.trial_history) > self.config.horizon: self.trial_history = self.trial_history[-self.horizon:]
 
         horizon = [t == "MATCH" for t in self.trial_history]
-        choices = self.Sabrina_Q_values if self.current_context is "MATCH" else np.flip(self.Sabrina_Q_values)
+        choices = self.Sabrina_Q_values if self.current_context == "MATCH" else np.flip(self.Sabrina_Q_values)
     #     print(horizon)
         current_reward = target[np.argmax(choice.mean(axis=0))] # 1 if choice is correct, 0 otherwise
     #     print('cue: ', stimulus, ' target', target, ' choice: ', choice.mean(axis=0), ' argmax: ', np.argmax(choice.mean(axis=0)))
@@ -190,7 +190,7 @@ class Error_computations:
         self.p_sm_snm_ns = np.array ([p_sm_T, p_snm_T, p_ns_T])
 
         if ratio_switch > switch_thresh: #flip context
-            if self.current_context is "MATCH": 
+            if self.current_context == "MATCH": 
                 self.current_context = "NON-MATCH"
             else: 
                 self.current_context = "MATCH"
@@ -216,8 +216,8 @@ class Error_computations:
                                 #  [-0.5  0.5]]
         
         if self.config.ofc_to_PFC_active:
-            self.wOFC2dlPFC = self.wOFC2dlPFC + 1e-2 * np.outer( PFCmr-PFCmr.mean(), self.vec_current_context-0.5)
-            self.wOFC2dlPFC = self.wOFC2dlPFC/(0.5* np.linalg.norm(self.wOFC2dlPFC))
+            self.wOFC2dlPFC = self.wOFC2dlPFC + self.config.OFC2dlPFC_lr * np.outer( PFCmr-PFCmr.mean(), self.vec_current_context-0.5)
+            self.wOFC2dlPFC = self.wOFC2dlPFC/(self.config.OFC2dlPFC_factor * np.linalg.norm(self.wOFC2dlPFC))
 
         return (switch)
 

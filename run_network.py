@@ -235,7 +235,7 @@ if __name__ == "__main__":
     group = parser.add_argument(
         "--var1", default=1, nargs='?', type=float, help="arg_1")
     group = parser.add_argument(
-        "--var2", default=1., nargs='?', type=float, help="arg_2")
+        "--var2", default=0.25, nargs='?', type=float, help="arg_2")
     group = parser.add_argument(
         "--var3", default=1.0, nargs='?', type=float, help="arg_3")
     group = parser.add_argument("--outdir", default="./results2",
@@ -267,10 +267,28 @@ if __name__ == "__main__":
         config = vmPFC_ablation_Config(args_dict) 
     elif args_dict['exp_type'] == 'OFC_ablation': 
         config = OFC_control_Config(args_dict)
-        if args.var1 >0: # OFC control is on oly if args.var1 is not 0
-            config.ofc_control_schedule = ['off'] *2  + ['on'] * 40
-        else:
+        # args.var1 = 3
+        if args.var1 == 0: # OFC control is on oly if args.var1 is not 0
             config.ofc_control_schedule = ['off'] *40
+        elif args.var1 == 1: # OFC control on, goes to MD
+            pass
+        elif args.var1 == 2: # OFC control is on goes to dlPFC
+            config.ofc_to_md_active = False
+            config.ofc_to_PFC_active = True
+        elif args.var1 == 3: # OFC control is on goes to dlPFC, but MD mul effect is off
+            config.ofc_to_md_active = False
+            config.ofc_to_PFC_active = True
+            config.allow_mul_effect = False 
+        elif args.var1 == 3: # OFC control is on goes to dlPFC, but both MD mul and add effect is off
+            config.ofc_to_md_active = False
+            config.ofc_to_PFC_active = True
+            config.allow_mul_effect = False 
+            config.allow_add_effect = False 
+        config.ofc_effect_magnitude = 1. 
+        config.OFC2dlPFC_factor = 0.1 # OFC2dlPFC weights (with a norm of 1) need multiplied by 10 to be effective.  
+        config.ofc_timesteps_active = int(args.var2) # 1 #apparantly 1 is enough. 
+        config.allow_ofc_control_to_no_pfc = config.Npfc #int(args.var2)
+        config.OFC2dlPFC_lr  = 1e-3
     else: 
         config = Config(args_dict)
 
