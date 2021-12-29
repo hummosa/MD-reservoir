@@ -28,7 +28,7 @@ class Config():
        	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
         # self.block_schedule = ['90', '10', '90', '30', '50', '70', '10', '50', '90', '30', '70', '10']
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
-        
+
         # general params
         self.tau = 0.02
         self.dt = 0.001
@@ -162,4 +162,10 @@ class OFC_control_Config(Config):
         self.allow_ofc_control_to_no_pfc = self.Npfc    # Limit ofc effect to certain no of PFC cells.
         self.ofc_to_md_active = True  # two Variables to decide whether OFC switch signal goes to MD or to PFC. (Might want to test both active at some point)
         self.ofc_to_PFC_active = False
- 
+         ## create a context vector to compare signals to
+        self.context_vector = np.ones(np.sum(self.variable_trials_per_block)) 
+        vt = np.cumsum([0]+ self.variable_trials_per_block)
+        if len(self.variable_trials_per_block) > 0:
+            for bi in range(0, len(self.variable_trials_per_block), 2):
+                self.context_vector[vt[bi]:vt[bi]+self.variable_trials_per_block[bi]] = np.ones(self.variable_trials_per_block[bi]) * -1
+        self.md_context_modulation = np.nan  # use this to store the final calculated value, will be saved with the config object, avoids having to save md firing rates.

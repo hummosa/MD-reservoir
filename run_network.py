@@ -147,26 +147,7 @@ def train(pfcmd, data_gen, config):
                             "network_weights": trial_weights,
                             "network_rates": trial_rates}, outfile)
 
-    # collect input from OFC and add it to Inputs for outputting.
-    # if ofc is off, the trial gets 0, if it is stimulating the 'match' side, it gets 1
-    # and 'non-match' gets -1. Although currently match and non-match have no meaning,
-    # as MD can be responding to either match or non-match. The disambiguation happens in post analysis
-    ofc_inputs = np.zeros((Ntrain,1))
-    tpb = config.trials_per_block
-    if len(pfcmd.hx_of_ofc_signal_lengths) > 0:
-        for bi in range(config.Nblocks):
-            if len(config.variable_trials_per_block) > 0:
-               tpb = config.variable_tirlas_per_block[bi]
-            ofc_hx = np.array(pfcmd.hx_of_ofc_signal_lengths)
-            if bi in ofc_hx[:,0]:
-                if data_generator.ofc_control_schedule[bi] == 'match':
-                    ofc_inputs[bi*tpb:bi*tpb+config.no_of_trials_with_ofc_signal] = np.ones((config.no_of_trials_with_ofc_signal, 1))
-                else:
-                    ofc_inputs[bi*tpb:bi*tpb+config.no_of_trials_with_ofc_signal] = -np.ones((config.no_of_trials_with_ofc_signal, 1))
-    Inputs = np.concatenate((Inputs, ofc_inputs), axis=-1)
 
-    weights = [wOuts, wPFC2MDs, wMD2PFCs,
-                wMD2PFCMults,  wJrecs, MDpreTraces]
     rates = [PFCrates, MDinputs, MDrates,
                 Outrates, Inputs, Targets, MSEs]
     # plot_q_values([vm_Outrates, vm_MDinputs])
@@ -206,6 +187,11 @@ def train(pfcmd, data_gen, config):
                 fn('monitor'), dpi=pltu.fig_dpi, facecolor='w', edgecolor='w', format=config.figure_format)
 
     np.save(fn('saved_Corrects')[:-4]+'.npy', area_to_plot.corrects)
+    # last minute add MD modulation by context to config, to test for it prior to analysing data. 
+    config.md_context_modulation = np.dot(config.context_vector, MDrates.mean(1)[:,0] )/ np.sum(config.context_vector>0) # normalize by no of trials for each context. Taking MD neuron 0 or 1 should be equal.
+    config.md_context_modulation = np.abs(config.md_context_modulation)
+
+
     np.save(fn('config')+'.npy', config)
     if config.saveData:  # output massive weight and rate files
         import pickle
@@ -238,7 +224,7 @@ if __name__ == "__main__":
         "--var2", default=0.25, nargs='?', type=float, help="arg_2")
     group = parser.add_argument(
         "--var3", default=1.0, nargs='?', type=float, help="arg_3")
-    group = parser.add_argument("--outdir", default="./results2",
+    group = parser.add_argument("--outdir", default="./results",
                                 nargs='?',  type=str, help="pass a str for data directory")
     group = parser.add_argument("--save_data_by_trial", default=False,
                                 nargs='?',  type=str, help="pass True to save data by trial")
@@ -258,7 +244,7 @@ if __name__ == "__main__":
                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
 
     if args_dict['exp_type'] == 'MD_ablation': 
-        args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0})
+        args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated 
         config = MD_ablation_Config(args_dict)
         config.MDamplification = args.var1
     elif args_dict['exp_type'] == 'Compare_to_human_data':
@@ -267,7 +253,7 @@ if __name__ == "__main__":
         config = vmPFC_ablation_Config(args_dict) 
     elif args_dict['exp_type'] == 'OFC_ablation': 
         config = OFC_control_Config(args_dict)
-        # args.var1 = 3
+        # args.var1 = 2
         if args.var1 == 0: # OFC control is on oly if args.var1 is not 0
             config.ofc_control_schedule = ['off'] *40
         elif args.var1 == 1: # OFC control on, goes to MD
@@ -287,7 +273,7 @@ if __name__ == "__main__":
         config.ofc_effect_magnitude = 1. 
         config.OFC2dlPFC_factor = 0.1 # OFC2dlPFC weights (with a norm of 1) need multiplied by 10 to be effective.  
         config.ofc_timesteps_active = int(args.var2) # 1 #apparantly 1 is enough. 
-        config.allow_ofc_control_to_no_pfc = config.Npfc #int(args.var2)
+        config.allow_ofc_control_to_no_pfc =  config.Npfc #int(args.var2)
         config.OFC2dlPFC_lr  = 1e-3
     else: 
         config = Config(args_dict)
@@ -295,7 +281,7 @@ if __name__ == "__main__":
     ofc = OFC() # Sabrina's vmPFC model. 
     error_computations = Error_computations(config) # Baseline error computation, OFC Bayesian model,  and overall error for node perturbation learning
 
-      # config.no_of_trials_with_ofc_signal = int(args_dict['switches'])
+    # config.no_of_trials_with_ofc_signal = int(args_dict['switches'])
     # config.MDamplification = 30.  # args_dict['switches']
     # config.MDlearningBiasFactor = args_dict['MDactive']
 
