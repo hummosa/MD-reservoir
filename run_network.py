@@ -87,6 +87,7 @@ def train(pfcmd, data_gen, config):
             log.write(traini, PFCrates=routs, MDinputs=MDinps, MDrates=MDouts, Outrates=outs, Inputs=np.concatenate([cue, q_values_after]),
             Targets=target, MSEs=np.mean(errors*errors), model_obj=pfcmd)
         
+        # NOTE DEPRECATE THIS? Seems slow to save indivudla files and slow to load them later too. 
         # Saves a data file per each trial
         # TODO possible variables to add for Mante & Sussillo condition analysis:
         #   - association level, OFC values
