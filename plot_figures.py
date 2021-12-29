@@ -11,22 +11,6 @@ def smooth(y, box_pts):
     y_smooth = np.convolve(y, box, mode='same')
     return y_smooth
 
-def stats(var, var_name=None):
-    if type(var) == type([]): # if a list
-        var = np.array(var)
-    elif type(var) == type(np.array([])):
-        pass #if already a numpy array, just keep going.
-    else: #assume torch tensor
-        pass
-        # var = var.detach().cpu().numpy()
-    if var_name:
-        print(var_name, ':')   
-    out = ('Mean, {:2.5f}, var {:2.5f}, min {:2.3f}, max {:2.3f}, norm {}'.format(var.mean(), var.var(), var.min(), var.max(),np.linalg.norm(var) ))
-    print(out)
-    return (out)
-
-
-
 def plot_rates(pfcmd, rates, config):
     PFCrates, MDinputs, MDrates, Outrates, Inputs, Targets, MSEs= rates
     # these tensors are  training_i x tsteps x no_neuron 
@@ -470,6 +454,7 @@ def plot_what_i_want(pfcmd, weights, rates, config):
         ax.set_ylim([0, 15])        
         ax.set_xlim([0, .7])        
     # pfcmd.figCustom.tight_layout()
+
 
 
 

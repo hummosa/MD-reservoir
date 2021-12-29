@@ -6,10 +6,11 @@ class Config():
         # 'seed' # Seed for the np random number generator
         self.args_dict = args_dict
         #enviroment parameters:
-        self.plotFigs = True
+        self.plotFigs = False
         self.debug = False
-        self.saveData = False        # self.figure_format =  'EPS'
-        # self.figure_format =  'PDF'
+        self.saveData = False
+        self.save_detailed = True        
+        # self.figure_format =  'PDF' # self.figure_format =  'EPS'
         self.figure_format =  'PNG'
         self.outdir = args_dict['outdir'] if 'outdir' in args_dict else './results/'
         self.RNGSEED = args_dict['seed'] if 'seed' in args_dict else 1                     
@@ -24,7 +25,7 @@ class Config():
         self.trials_per_block = None #500
         self.variable_trials_per_block = [500, 500, 800, 600, 800, 600, 800, 600, 600, 800, 800, 600]
         #self.variable_trials_per_block = [500, 500, 400, 300, 400, 300, 400, 300, 300, 400, 400, 300]
-        self.Nblocks = 10                   # number of blocks for the simulation
+        self.Nblocks = 10  # Deprecated                 # number of blocks for the simulation
        	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
         # self.block_schedule = ['90', '10', '90', '30', '50', '70', '10', '50', '90', '30', '70', '10']
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
@@ -99,6 +100,25 @@ class Config():
         if self.reinforceReservoir:
             self.perturbProb /= 10
 
+        self.md_context_modulation = np.nan 
+
+    @property
+    def variable_trials_per_block(self):
+        return(self._variable_trials_per_block)
+    @variable_trials_per_block.setter
+    def variable_trials_per_block(self, variable_trials_per_block):
+        self._variable_trials_per_block = variable_trials_per_block
+        ## create a context vector to compare signals to
+        self.context_vector = np.ones(np.sum(self.variable_trials_per_block)) 
+        vt = np.cumsum([0]+ self.variable_trials_per_block)
+        if len(self.variable_trials_per_block) > 0:
+            for bi in range(0, len(self.variable_trials_per_block), 2):
+                self.context_vector[vt[bi]:vt[bi]+self.variable_trials_per_block[bi]] = np.ones(self.variable_trials_per_block[bi]) * -1 # use this to store the final calculated value, will be saved with the config object, avoids having to save md firing rates.
+        if len(self.variable_trials_per_block) == 0:
+            self.Ntrain = self.trials_per_block * self.Nblocks
+        else: 
+            self.Ntrain = np.sum(self.variable_trials_per_block)
+        
 ## Configs for common experiments.
 class Compare_to_humans_config(Config):
     def __init__(self, args_dict={}):
@@ -137,10 +157,10 @@ class MD_ablation_Config(Config):
         self.allow_mul_effect = args_dict['MD_mul_effect']
         self.MD_mul_mean, self.MD_mul_std = args_dict['MD_mul_mean'], args_dict['MD_mul_std']
         # self.MD_add_mean, self.MD_add_std = args_dict['MD_add_mean'], args_dict['MD_add_std']
-        self.variable_trials_per_block = [500] * 6
+        self.variable_trials_per_block = [500] * 6 
        	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
-
+        
 class vmPFC_ablation_Config(Config):
     def __init__(self, args_dict={'vmPFC_inputs': 'on'}):
         super().__init__(args_dict)
@@ -162,10 +182,3 @@ class OFC_control_Config(Config):
         self.allow_ofc_control_to_no_pfc = self.Npfc    # Limit ofc effect to certain no of PFC cells.
         self.ofc_to_md_active = True  # two Variables to decide whether OFC switch signal goes to MD or to PFC. (Might want to test both active at some point)
         self.ofc_to_PFC_active = False
-         ## create a context vector to compare signals to
-        self.context_vector = np.ones(np.sum(self.variable_trials_per_block)) 
-        vt = np.cumsum([0]+ self.variable_trials_per_block)
-        if len(self.variable_trials_per_block) > 0:
-            for bi in range(0, len(self.variable_trials_per_block), 2):
-                self.context_vector[vt[bi]:vt[bi]+self.variable_trials_per_block[bi]] = np.ones(self.variable_trials_per_block[bi]) * -1
-        self.md_context_modulation = np.nan  # use this to store the final calculated value, will be saved with the config object, avoids having to save md firing rates.

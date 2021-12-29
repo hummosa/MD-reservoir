@@ -4,6 +4,7 @@
 """Extends code by Aditya Gilra. Some reservoir tweaks are inspired by Nicola and Clopath, arxiv, 2016 and Miconi 2016."""
 
 import json
+from re import L
 from config import Compare_to_humans_config, Config, MD_ablation_Config, OFC_control_Config, vmPFC_ablation_Config
 from error_computations import Error_computations
 # from refactor.ofc_trailtype import OFC as OFC_Trial
@@ -30,34 +31,18 @@ from scipy.io import savemat
 import tqdm
 import time
 import plot_utils as pltu
+from utils import Logger, stats
 import argparse
 from model import PFCMD
 
 
 def train(pfcmd, data_gen, config):
-    if len(config.variable_trials_per_block) == 0:
-        Ntrain = config.trials_per_block * config.Nblocks
-    else: 
-        Ntrain = np.sum(config.variable_trials_per_block)
 
     # Containers to save simulation variables
-    wOuts = np.zeros(shape=(Ntrain, config.Nout, config.Npfc))
-    wPFC2MDs = np.zeros(shape=(Ntrain, 2, config.Npfc))
-    wMD2PFCs = np.zeros(shape=(Ntrain, config.Npfc, 2))
-    wMD2PFCMults = np.zeros(shape=(Ntrain, config.Npfc, 2))
-    MDpreTraces = np.zeros(shape=(Ntrain, config.Npfc))
-    wJrecs = np.zeros(shape=(Ntrain, 40, 40))
-    PFCrates = np.zeros((Ntrain, config.tsteps, config.Npfc))
-    MDinputs = np.zeros((Ntrain, config.tsteps, config.Nmd))
-    MDrates = np.zeros((Ntrain, config.tsteps, config.Nmd))
-    Outrates = np.zeros((Ntrain, config.tsteps, config.Nout))
-    Inputs = np.zeros((Ntrain, config.Ninputs+3)) # Adding OFC latents temp #TODO remove this.
-    Targets = np.zeros((Ntrain, config.Nout))
-    pfcmd.hx_of_ofc_signal_lengths = []
-    MSEs = np.zeros(Ntrain)
+    log = Logger(config)
 
     q_values_before = np.array([0.5, 0.5])
-    for traini in tqdm.tqdm(range(Ntrain)):
+    for traini in tqdm.tqdm(range(config.Ntrain)):
         if len(config.variable_trials_per_block) > 0:
             if traini == 0:
                 blocki = 0
@@ -98,24 +83,10 @@ def train(pfcmd, data_gen, config):
         q_values_before = ofc.get_v()
 
         # Collect variables for analysis, plotting, and saving to disk
-        area_to_plot = pfcmd
-        PFCrates[traini, :, :] = routs
-        MDinputs[traini, :, :] = MDinps
-        MDrates[traini, :, :] = MDouts
-        Outrates[traini, :, :] = outs
-        Inputs[traini, :] = np.concatenate([cue, q_values_after, error_computations.p_sm_snm_ns])
-        Targets[traini, :] = target
-        wOuts[traini, :, :] = area_to_plot.wOut
-        wPFC2MDs[traini, :, :] = area_to_plot.wPFC2MD
-        wMD2PFCs[traini, :, :] = area_to_plot.wMD2PFC
-        wMD2PFCMults[traini, :, :] = area_to_plot.wMD2PFCMult
-        MDpreTraces[traini, :] = area_to_plot.MDpreTrace
-        MSEs[traini] += np.mean(errors*errors)
-        if config.reinforceReservoir:
-            # saving the whole rec is too large, 1000*1000*2200
-            wJrecs[traini, :, :] = area_to_plot.Jrec[:40,
-                                                0:25:1000].detach().cpu().numpy()
-
+        if config.save_detailed:
+            log.write(traini, PFCrates=routs, MDinputs=MDinps, MDrates=MDouts, Outrates=outs, Inputs=np.concatenate([cue, q_values_after]),
+            Targets=target, MSEs=np.mean(errors*errors), model_obj=pfcmd)
+        
         # Saves a data file per each trial
         # TODO possible variables to add for Mante & Sussillo condition analysis:
         #   - association level, OFC values
@@ -148,12 +119,12 @@ def train(pfcmd, data_gen, config):
                             "network_rates": trial_rates}, outfile)
 
 
-    rates = [PFCrates, MDinputs, MDrates,
-                Outrates, Inputs, Targets, MSEs]
+    # rates = [PFCrates, MDinputs, MDrates,
+    #             Outrates, Inputs, Targets, MSEs]
     # plot_q_values([vm_Outrates, vm_MDinputs])
-    # plot_weights(area_to_plot, weights, config)
-    plot_rates(area_to_plot, rates, config)
-    #plot_what_i_want(area_to_plot, weights, rates, config)
+    # plot_weights(pfcmd, weights, config)
+    # plot_rates(pfcmd, rates, config)
+    #plot_what_i_want(pfcmd, weights, rates, config)
     # ofc_plots(error_computations, 2500, 'end_')
     #from IPython import embed; embed()
     dirname = config.args_dict['outdir'] +"/"+config.args_dict['exp_name']+"/"+config.args_dict['exp_type']+"/"
@@ -166,33 +137,38 @@ def train(pfcmd, data_gen, config):
     
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-    def fn(fn_str): return os.path.join(dirname, 'fig_{}_{}_{}.{}'.format(
+    def fn(fn_str): return os.path.join(dirname, '{}_{}_{}.{}'.format(
         fn_str, parm_summary, time.strftime("%m-%d_%H:%M"), config.figure_format))
 
     if config.plotFigs:  # Plotting and writing results. Needs cleaned up.
-        # area_to_plot.figWeights.savefig(fn('weights'),  transparent=True,dpi=pltu.fig_dpi,
+        # pfcmd.figWeights.savefig(fn('weights'),  transparent=True,dpi=pltu.fig_dpi,
                                 # facecolor='w', edgecolor='w', format=config.figure_format)
-        area_to_plot.figOuts.savefig(fn('behavior'),  transparent=True,dpi=pltu.fig_dpi,
+        pfcmd.figOuts.savefig(fn('behavior'),  transparent=True,dpi=pltu.fig_dpi,
                                 facecolor='w', edgecolor='w', format=config.figure_format)
-        #area_to_plot.figRates.savefig(fn('rates'),    transparent=True,dpi=pltu.fig_dpi,
+        #pfcmd.figRates.savefig(fn('rates'),    transparent=True,dpi=pltu.fig_dpi,
                                 #facecolor='w', edgecolor='w', format=config.figure_format)
         if config.debug:
-            area_to_plot.figTrials.savefig(fn('trials'),  transparent=True,dpi=pltu.fig_dpi,
+            pfcmd.figTrials.savefig(fn('trials'),  transparent=True,dpi=pltu.fig_dpi,
                                     facecolor='w', edgecolor='w', format=config.figure_format)
-            area_to_plot.fig_monitor = plt.figure()
-            area_to_plot.monitor.plot(area_to_plot.fig_monitor, area_to_plot)
-            area_to_plot.figCustom.savefig(
+            pfcmd.fig_monitor = plt.figure()
+            pfcmd.monitor.plot(pfcmd.fig_monitor, pfcmd)
+            pfcmd.figCustom.savefig(
                 fn('custom'), dpi=pltu.fig_dpi, facecolor='w', edgecolor='w', format=config.figure_format)
-            area_to_plot.fig_monitor.savefig(
+            pfcmd.fig_monitor.savefig(
                 fn('monitor'), dpi=pltu.fig_dpi, facecolor='w', edgecolor='w', format=config.figure_format)
 
-    np.save(fn('saved_Corrects')[:-4]+'.npy', area_to_plot.corrects)
     # last minute add MD modulation by context to config, to test for it prior to analysing data. 
-    config.md_context_modulation = np.dot(config.context_vector, MDrates.mean(1)[:,0] )/ np.sum(config.context_vector>0) # normalize by no of trials for each context. Taking MD neuron 0 or 1 should be equal.
-    config.md_context_modulation = np.abs(config.md_context_modulation)
+    log.md_context_modulation = np.dot(config.context_vector, log.MDrates.mean(1)[:,0] )/ np.sum(config.context_vector>0) # normalize by no of trials for each context. Taking MD neuron 0 or 1 should be equal.
+    log.md_context_modulation = np.abs(log.md_context_modulation)
 
+    out_higher_mean = 1.*( np.mean( log.Outrates[:, :,0], axis=1) > np.mean( log.Outrates[:, :,1], axis=1) )
+    Corrects = 1. * (log.Targets[:,0] == out_higher_mean)
+    log.corrects = Corrects
 
-    np.save(fn('config')+'.npy', config)
+    np.save(fn('saved_Corrects')[:-4]+'.npy', log.corrects)
+    np.save(fn('config')[:-4]+'.npy', config)
+    np.save(fn('log')[:-4]+'.npy', log, allow_pickle=True)
+    
     if config.saveData:  # output massive weight and rate files
         import pickle
         filehandler = open(fn('saved_rates')[:-4]+'.pickle', 'wb')
@@ -236,17 +212,17 @@ if __name__ == "__main__":
                 # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
                 'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
                 'exp_name': args.exp_name,
-                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][3], #
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][1], #
                 "save_data_by_trial": args.save_data_by_trial,
                 'vmPFC_inputs': 'on',
-                'MDeffect': True, 'MD_add_effect': False, 'MD_mul_effect': True,
-                'ofc_target': 'MD', 'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500,
+                'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
+                'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500,
                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
 
     if args_dict['exp_type'] == 'MD_ablation': 
         args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated 
         config = MD_ablation_Config(args_dict)
-        config.MDamplification = args.var1
+        config.MDamplification = 30 # args.var1
     elif args_dict['exp_type'] == 'Compare_to_human_data':
         config = Compare_to_humans_config(args_dict) 
     elif args_dict['exp_type'] == 'vmPFC_ablation':
@@ -254,7 +230,7 @@ if __name__ == "__main__":
     elif args_dict['exp_type'] == 'OFC_ablation': 
         config = OFC_control_Config(args_dict)
         # args.var1 = 2
-        if args.var1 == 0: # OFC control is on oly if args.var1 is not 0
+        if args.var1 == 0: # OFC control off
             config.ofc_control_schedule = ['off'] *40
         elif args.var1 == 1: # OFC control on, goes to MD
             pass
