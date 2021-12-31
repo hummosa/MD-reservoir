@@ -186,6 +186,10 @@ class PFCMD():
                 MDout = np.array([1, 0])
             else:
                 MDout = np.array([0, 1])
+            
+            ########### controlled MD behavior.
+            if config.instruct_md_behavior:
+                MDout = np.array([1, 0]) if association_level in ['90', '70', '50'] else np.array([0, 1])
 
             MDouts[i, :] = MDout
             MDinps[i, :] = MDinp
@@ -225,7 +229,7 @@ class PFCMD():
             if train and not config.MDreinforce:
                 # MD presynaptic traces evolve dyanamically during trial and across trials
                 # to decrease fluctuations.
-                self.MDpreTrace += 1./config.tsteps/10. * \
+                self.MDpreTrace += 1./(config.tsteps/10.) * \
                     (-self.MDpreTrace + rout)
                 MDlearningBias = config.MDlearningBiasFactor * \
                     np.mean(self.MDpreTrace)

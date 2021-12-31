@@ -5,7 +5,7 @@
 
 import json
 from re import L
-from config import Compare_to_humans_config, Config, MD_ablation_Config, OFC_control_Config, vmPFC_ablation_Config
+from config import *
 from error_computations import Error_computations
 # from refactor.ofc_trailtype import OFC as OFC_Trial
 from vmPFC_k_means import OFC
@@ -41,7 +41,7 @@ def train(pfcmd, data_gen, config):
     # Containers to save simulation variables
     log = Logger(config)
 
-    q_values_before = np.array([0.5, 0.5])
+    q_values = np.array([0.5, 0.5])
     for traini in tqdm.tqdm(range(config.Ntrain)):
         if len(config.variable_trials_per_block) > 0:
             if traini == 0:
@@ -66,7 +66,7 @@ def train(pfcmd, data_gen, config):
         error_computations.Sabrina_Q_values = ofc.get_v() # TODO: this is just a temp fix to get estimates from Sabrina's vmPFC.
 
         _, routs, outs, MDouts, MDinps, errors = \
-            pfcmd.run_trial(association_level, q_values_before, error_computations, cue, target, config, MDeffect=config.MDeffect,
+            pfcmd.run_trial(association_level, q_values, error_computations, cue, target, config, MDeffect=config.MDeffect,
                             train=config.train)
 
         switch = error_computations.update_v(cue, outs, target, MDouts.mean(axis=0), routs.mean(axis=0))
@@ -79,14 +79,15 @@ def train(pfcmd, data_gen, config):
         ofc_signal = ofc.update_v(cue, outs[-1,:], target)
         if ofc_signal == "SWITCH":
             ofc.switch_context()
-        q_values_after = ofc.get_v()
-        q_values_before = ofc.get_v()
+        q_values = ofc.get_v()
 
         # Collect variables for analysis, plotting, and saving to disk
         if config.save_detailed:
-            log.write(traini, PFCrates=routs, MDinputs=MDinps, MDrates=MDouts, Outrates=outs, Inputs=np.concatenate([cue, q_values_after]),
+            log.write(traini, PFCrates=routs, MDinputs=MDinps, MDrates=MDouts, Outrates=outs, Inputs=np.concatenate([cue, q_values]),
             Targets=target, MSEs=np.mean(errors*errors), model_obj=pfcmd)
-        
+        else:
+            log.write_basic(traini, PFCrates=routs.mean(0), MDinputs=MDinps.mean(0), MDrates=MDouts, Outrates=outs.mean(0), Inputs=np.concatenate([cue, q_values]),
+            Targets=target, MSEs=np.mean(errors*errors), model_obj=None)
         # NOTE DEPRECATE THIS? Seems slow to save indivudla files and slow to load them later too. 
         # Saves a data file per each trial
         # TODO possible variables to add for Mante & Sussillo condition analysis:
@@ -162,7 +163,10 @@ def train(pfcmd, data_gen, config):
     log.md_context_modulation = np.dot(config.context_vector, log.MDrates.mean(1)[:,0] )/ np.sum(config.context_vector>0) # normalize by no of trials for each context. Taking MD neuron 0 or 1 should be equal.
     log.md_context_modulation = np.abs(log.md_context_modulation)
 
-    out_higher_mean = 1.*( np.mean( log.Outrates[:, :,0], axis=1) > np.mean( log.Outrates[:, :,1], axis=1) )
+    if config.save_detailed:
+        out_higher_mean = 1.*( np.mean( log.Outrates[:, :,0], axis=1) > np.mean( log.Outrates[:, :,1], axis=1) )
+    else:
+        out_higher_mean = 1.*( log.Outrates[:, 0] >  log.Outrates[ :,1] )
     Corrects = 1. * (log.Targets[:,0] == out_higher_mean)
     log.corrects = Corrects
 
@@ -190,21 +194,13 @@ def train(pfcmd, data_gen, config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    group = parser.add_argument("exp_name", default="temp",
-                                nargs='?',  type=str, help="pass a str for experiment name")
-    group = parser.add_argument(
-        "seed", default=2, nargs='?',  type=float, help="simulation seed")
-    
-    group = parser.add_argument(
-        "--var1", default=1, nargs='?', type=float, help="arg_1")
-    group = parser.add_argument(
-        "--var2", default=0.25, nargs='?', type=float, help="arg_2")
-    group = parser.add_argument(
-        "--var3", default=1.0, nargs='?', type=float, help="arg_3")
-    group = parser.add_argument("--outdir", default="./results",
-                                nargs='?',  type=str, help="pass a str for data directory")
-    group = parser.add_argument("--save_data_by_trial", default=False,
-                                nargs='?',  type=str, help="pass True to save data by trial")
+    group = parser.add_argument("exp_name", default="temp",nargs='?',  type=str, help="pass a str for experiment name")
+    group = parser.add_argument("seed", default=0, nargs='?',  type=float, help="simulation seed")
+    group = parser.add_argument("--var1", default=1, nargs='?', type=float, help="arg_1")
+    group = parser.add_argument("--var2", default=30, nargs='?', type=float, help="arg_2")
+    group = parser.add_argument("--var3", default=1.0, nargs='?', type=float, help="arg_3")
+    group = parser.add_argument("--outdir", default="./results", nargs='?',  type=str, help="pass a str for data directory")
+    group = parser.add_argument("--save_data_by_trial", default=False, nargs='?',  type=str, help="pass True to save data by trial")
     args = parser.parse_args()
     # OpenMind shared directory: "/om2/group/halassa/PFCMD-ali-sabrina"
      # redefine some parameters for quick experimentation and argument passing to python file.
@@ -213,7 +209,7 @@ if __name__ == "__main__":
                 # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
                 'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
                 'exp_name': args.exp_name,
-                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation'][1], #
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][5], #
                 "save_data_by_trial": args.save_data_by_trial,
                 'vmPFC_inputs': 'on',
                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
@@ -223,7 +219,18 @@ if __name__ == "__main__":
     if args_dict['exp_type'] == 'MD_ablation': 
         args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated 
         config = MD_ablation_Config(args_dict)
-        config.MDamplification = 30 # args.var1
+        # config.MDamplification =  args.var2
+        if args.var1 == 0: # MD on
+            pass
+        elif args.var1 == 1: # mul off
+            config.allow_mul_effect = False
+        elif args.var1 == 2: # add off
+            config.allow_add_effect = False
+
+    elif args_dict['exp_type'] == 'HebbianLearning':
+        config = HebbianLearning_config(args_dict) 
+        config.MDrange = args.var2 
+
     elif args_dict['exp_type'] == 'Compare_to_human_data':
         config = Compare_to_humans_config(args_dict) 
     elif args_dict['exp_type'] == 'vmPFC_ablation':
@@ -264,6 +271,7 @@ if __name__ == "__main__":
 
     pfcmd = PFCMD(config)
         
+
     if config.reLoadWeights:
         filename = 'dataPFCMD/data_reservoir_PFC_MD' + '_R'+str(pfcmd.RNGSEED) + '.shelve'
         pfcmd.load(filename)
