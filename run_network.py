@@ -209,7 +209,7 @@ if __name__ == "__main__":
                 # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
                 'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
                 'exp_name': args.exp_name,
-                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][5], #
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][4], #
                 "save_data_by_trial": args.save_data_by_trial,
                 'vmPFC_inputs': 'on',
                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
