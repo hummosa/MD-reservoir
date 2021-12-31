@@ -220,11 +220,15 @@ if __name__ == "__main__":
         args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated 
         config = MD_ablation_Config(args_dict)
         # config.MDamplification =  args.var2
+        config.instruct_md_behavior = True
         if args.var1 == 0: # MD on
             pass
         elif args.var1 == 1: # mul off
             config.allow_mul_effect = False
         elif args.var1 == 2: # add off
+            config.allow_add_effect = False
+        elif args.var1 == 3: # bot mul and add off
+            config.allow_mul_effect = False
             config.allow_add_effect = False
 
     elif args_dict['exp_type'] == 'HebbianLearning':

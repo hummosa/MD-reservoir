@@ -65,7 +65,7 @@ class Config():
         self.delayed_response = 0 #50       # in ms, Reward model based on last 50ms of trial, if 0 take mean error of entire trial. Impose a delay between cue and stimulus.
 
         # Model ablations:
-        self.instruct_md_behavior = True   # to disable the effects of context discovery by hebbian learning. Istruct ideal MD behavior, and examine other parts of the model.
+        self.instruct_md_behavior = False   # to disable the effects of context discovery by hebbian learning. Istruct ideal MD behavior, and examine other parts of the model.
         self.allow_add_effect = True       # Set to False to ablate MD additive effects
         self.allow_mul_effect = True     # Set to False to ablate MD multiplicative effects
         self.allow_value_inputs = True     # set to false to Zero out the weights of the value inputs 
