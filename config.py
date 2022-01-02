@@ -156,7 +156,7 @@ class MD_ablation_Config(Config):
             self.MDremovalCompensationFactor = 1.3
         self.allow_add_effect = args_dict['MD_add_effect']
         self.allow_mul_effect = args_dict['MD_mul_effect']
-        self.MD_mul_mean, self.MD_mul_std = args_dict['MD_mul_mean'], args_dict['MD_mul_std']
+        # self.MD_mul_mean, self.MD_mul_std = args_dict['MD_mul_mean'], args_dict['MD_mul_std']
         # self.MD_add_mean, self.MD_add_std = args_dict['MD_add_mean'], args_dict['MD_add_std']
         self.variable_trials_per_block = [500] * 6 
        	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
@@ -170,13 +170,8 @@ class HebbianLearning_config(Config):
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
         
 class vmPFC_ablation_Config(Config):
-    def __init__(self, args_dict={'vmPFC_inputs': 'on'}):
+    def __init__(self, args_dict={}):
         super().__init__(args_dict)
-        if args_dict['vmPFC_inputs'] =='on':
-            self.allow_value_inputs = True
-        else: 
-            self.allow_value_inputs = False
-    
         self.variable_trials_per_block = [500] * 6
        	self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70'] 
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40

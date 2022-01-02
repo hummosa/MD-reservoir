@@ -117,8 +117,6 @@ class PFCMD():
                 self.wIn = np.random.normal(size=(config.Npfc, config.Ncues), loc=(
                     lowcue+highcue)/2, scale=input_variance) * config.cueFactor
                 self.wIn = np.clip(self.wIn, 0, 1)
-            if not config.allow_value_inputs:
-                self.wV = np.zeros((config.Npfc, 2))
 
         self.MDpreTrace = np.zeros(shape=(config.Npfc))
 
@@ -175,11 +173,9 @@ class PFCMD():
                 MDinp += config.ofc_to_MD_gating_variable * input_from_ofc
 
             if config.positiveRates:
-                MDinp += config.dt/config.tau * \
-                    (-MDinp + np.dot(self.wPFC2MD, rout))
+                MDinp += config.dt/config.tau * (-MDinp + np.dot(self.wPFC2MD, rout))
             else:  # shift PFC rates, so that mean is non-zero to turn MD on
-                MDinp += config.dt/config.tau * 10. * \
-                    (-MDinp + np.dot(self.wPFC2MD, (rout+1./2)))
+                MDinp += config.dt/config.tau * 10. * (-MDinp + np.dot(self.wPFC2MD, (rout+1./2)))
 
             # winner take all on the MD hardcoded for config.Nmd = 2
             if MDinp[0] > MDinp[1]:
@@ -223,13 +219,16 @@ class PFCMD():
                 # if MDeffect and useMult:
                 #    xadd += self.MD2PFCMult * np.dot(self.wIn,cue)
                 xadd += np.dot(self.wIn, cue)
-                xadd += np.dot(self.wV, Q_values)
+                if config.allow_value_inputs:
+                    xadd += np.dot(self.wV, Q_values)
+                else:
+                    xadd += np.dot(self.wV, np.array([0.5,0.5]))
 
             # MD Hebbian learning
             if train and not config.MDreinforce:
                 # MD presynaptic traces evolve dyanamically during trial and across trials
                 # to decrease fluctuations.
-                self.MDpreTrace += 1./(config.tsteps/10.) * \
+                self.MDpreTrace += 1./config.tsteps/10. * \
                     (-self.MDpreTrace + rout)
                 MDlearningBias = config.MDlearningBiasFactor * \
                     np.mean(self.MDpreTrace)

@@ -196,7 +196,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group = parser.add_argument("exp_name", default="temp",nargs='?',  type=str, help="pass a str for experiment name")
     group = parser.add_argument("seed", default=0, nargs='?',  type=float, help="simulation seed")
-    group = parser.add_argument("--var1", default=1, nargs='?', type=float, help="arg_1")
+    group = parser.add_argument("--var1", default=0, nargs='?', type=float, help="arg_1")
     group = parser.add_argument("--var2", default=30, nargs='?', type=float, help="arg_2")
     group = parser.add_argument("--var3", default=1.0, nargs='?', type=float, help="arg_3")
     group = parser.add_argument("--outdir", default="./results", nargs='?',  type=str, help="pass a str for data directory")
@@ -211,16 +211,14 @@ if __name__ == "__main__":
                 'exp_name': args.exp_name,
                 'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][4], #
                 "save_data_by_trial": args.save_data_by_trial,
-                'vmPFC_inputs': 'on',
                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
-                'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500,
                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
 
     if args_dict['exp_type'] == 'MD_ablation': 
         args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated 
         config = MD_ablation_Config(args_dict)
-        # config.MDamplification =  args.var2
-        config.instruct_md_behavior = True
+        config.MDamplification =  args.var2
+        # config.instruct_md_behavior = True
         if args.var1 == 0: # MD on
             pass
         elif args.var1 == 1: # mul off
@@ -236,9 +234,22 @@ if __name__ == "__main__":
         config.MDrange = args.var2 
 
     elif args_dict['exp_type'] == 'Compare_to_human_data':
-        config = Compare_to_humans_config(args_dict) 
+        config = Compare_to_humans_config(args_dict)
+
     elif args_dict['exp_type'] == 'vmPFC_ablation':
-        config = vmPFC_ablation_Config(args_dict) 
+        config = vmPFC_ablation_Config(args_dict)
+        # args.var1 =0 
+        if args.var1 == 0: # Full model with vmPFC input
+            config.allow_mul_effect = True
+            config.allow_add_effect = True
+            config.allow_value_inputs = True
+        elif args.var1 == 1: # No vmPFC input 
+            config.allow_value_inputs = True
+            config.allow_mul_effect = False
+            config.allow_add_effect = False
+        elif args.var1 == 2: # no vmPFC input and MD lesioned.
+            config.allow_value_inputs = False
+
     elif args_dict['exp_type'] == 'OFC_ablation': 
         config = OFC_control_Config(args_dict)
         # args.var1 = 2
