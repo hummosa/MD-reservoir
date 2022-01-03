@@ -71,7 +71,7 @@ def train(pfcmd, data_gen, config):
 
         switch = error_computations.update_v(cue, outs, target, MDouts.mean(axis=0), routs.mean(axis=0))
         config.ofc_to_MD_gating_variable = config.ofc_effect_momentum * config.ofc_to_MD_gating_variable  # config.ofc_to_MD_gating_variable decays exponentially.
-        if switch and (ofc_control == 'on'): 
+        if switch and (ofc_control == 'on'):
             config.ofc_to_MD_gating_variable = config.ofc_effect_magnitude  #whenever a switch occurs, config.ofc_to_MD_gating_variable is reset to high value ofc_effect_magnitude
 
         # if traini%250==0: ofc_plots(error_computations, traini, '_')
@@ -88,7 +88,7 @@ def train(pfcmd, data_gen, config):
         else:
             log.write_basic(traini, PFCrates=routs.mean(0), MDinputs=MDinps.mean(0), MDrates=MDouts, Outrates=outs.mean(0), Inputs=np.concatenate([cue, q_values]),
             Targets=target, MSEs=np.mean(errors*errors), model_obj=None)
-        # NOTE DEPRECATE THIS? Seems slow to save indivudla files and slow to load them later too. 
+        # NOTE DEPRECATE THIS? Seems slow to save indivudla files and slow to load them later too.
         # Saves a data file per each trial
         # TODO possible variables to add for Mante & Sussillo condition analysis:
         #   - association level, OFC values
@@ -133,10 +133,10 @@ def train(pfcmd, data_gen, config):
     # parm_summary = str(list(config.args_dict.values())[0])+"_"+str(
     #     list(config.args_dict.values())[1])+"_"+str(
     #     list(config.args_dict.values())[2])+"_"+str(list(config.args_dict.values())[5])
-    
+
     parameters_to_summ = ['seed', 'var1', 'var2', 'var3']
     parm_summary = "".join([f"{config.args_dict[par]}_" for par in parameters_to_summ] )
-    
+
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     def fn(fn_str): return os.path.join(dirname, '{}_{}_{}.{}'.format(
@@ -159,7 +159,7 @@ def train(pfcmd, data_gen, config):
             pfcmd.fig_monitor.savefig(
                 fn('monitor'), dpi=pltu.fig_dpi, facecolor='w', edgecolor='w', format=config.figure_format)
 
-    # last minute add MD modulation by context to config, to test for it prior to analysing data. 
+    # last minute add MD modulation by context to config, to test for it prior to analysing data.
     log.md_context_modulation = np.dot(config.context_vector, log.MDrates.mean(1)[:,0] )/ np.sum(config.context_vector>0) # normalize by no of trials for each context. Taking MD neuron 0 or 1 should be equal.
     log.md_context_modulation = np.abs(log.md_context_modulation)
 
@@ -173,7 +173,7 @@ def train(pfcmd, data_gen, config):
     np.save(fn('saved_Corrects')[:-4]+'.npy', log.corrects)
     np.save(fn('config')[:-4]+'.npy', config)
     np.save(fn('log')[:-4]+'.npy', log, allow_pickle=True)
-    
+
     if config.saveData:  # output massive weight and rate files
         import pickle
         filehandler = open(fn('saved_rates')[:-4]+'.pickle', 'wb')
@@ -214,8 +214,8 @@ if __name__ == "__main__":
                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
 
-    if args_dict['exp_type'] == 'MD_ablation': 
-        args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated 
+    if args_dict['exp_type'] == 'MD_ablation':
+        args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated
         config = MD_ablation_Config(args_dict)
         config.MDamplification =  args.var2
         # config.instruct_md_behavior = True
@@ -230,8 +230,15 @@ if __name__ == "__main__":
             config.allow_add_effect = False
 
     elif args_dict['exp_type'] == 'HebbianLearning':
-        config = HebbianLearning_config(args_dict) 
-        config.MDrange = args.var2 
+        config = HebbianLearning_config(args_dict)
+        a_MDrange = [.02, .04, .06, .08, .1, .12, .14, .16, .18, .2]
+        a_MDlr    = [.01, .005, .001, .0005, .0001, 5e-5, .00001, .000005, .000001]
+        a_tau     = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000]
+        slurm_task_id = int(args.var1)
+        config.MDrange = a_MDrange[slurm_task_id-1]
+        config.MDlearningrate = float(a_MDlr[slurm_task_id-1])
+        config.tsteps = int(a_tau[slurm_task_id])
+        config.save_detailed = False
 
     elif args_dict['exp_type'] == 'Compare_to_human_data':
         config = Compare_to_humans_config(args_dict)
@@ -263,21 +270,21 @@ if __name__ == "__main__":
         elif args.var1 == 3: # OFC control is on goes to dlPFC, but MD mul effect is off
             config.ofc_to_md_active = False
             config.ofc_to_PFC_active = True
-            config.allow_mul_effect = False 
+            config.allow_mul_effect = False
         elif args.var1 == 3: # OFC control is on goes to dlPFC, but both MD mul and add effect is off
             config.ofc_to_md_active = False
             config.ofc_to_PFC_active = True
-            config.allow_mul_effect = False 
-            config.allow_add_effect = False 
-        config.ofc_effect_magnitude = 1. 
-        config.OFC2dlPFC_factor = 0.1 # OFC2dlPFC weights (with a norm of 1) need multiplied by 10 to be effective.  
-        config.ofc_timesteps_active = int(args.var2) # 1 #apparantly 1 is enough. 
+            config.allow_mul_effect = False
+            config.allow_add_effect = False
+        config.ofc_effect_magnitude = 1.
+        config.OFC2dlPFC_factor = 0.1 # OFC2dlPFC weights (with a norm of 1) need multiplied by 10 to be effective.
+        config.ofc_timesteps_active = int(args.var2) # 1 #apparantly 1 is enough.
         config.allow_ofc_control_to_no_pfc =  config.Npfc #int(args.var2)
         config.OFC2dlPFC_lr  = 1e-3
-    else: 
+    else:
         config = Config(args_dict)
 
-    ofc = OFC() # Sabrina's vmPFC model. 
+    ofc = OFC() # Sabrina's vmPFC model.
     error_computations = Error_computations(config) # Baseline error computation, OFC Bayesian model,  and overall error for node perturbation learning
 
     # config.no_of_trials_with_ofc_signal = int(args_dict['switches'])
@@ -285,7 +292,7 @@ if __name__ == "__main__":
     # config.MDlearningBiasFactor = args_dict['MDactive']
 
     pfcmd = PFCMD(config)
-        
+
 
     if config.reLoadWeights:
         filename = 'dataPFCMD/data_reservoir_PFC_MD' + '_R'+str(pfcmd.RNGSEED) + '.shelve'
@@ -293,9 +300,9 @@ if __name__ == "__main__":
     t = time.perf_counter()
 
     train(pfcmd , data_generator(config), config)
-    
+
     print('training_time', (time.perf_counter() - t)/60, ' minutes')
-    
+
     if config.saveData:
         pfcmd.save()
         pfcmd.fileDict.close()

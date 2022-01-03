@@ -182,7 +182,7 @@ class PFCMD():
                 MDout = np.array([1, 0])
             else:
                 MDout = np.array([0, 1])
-            
+
             ########### controlled MD behavior.
             if config.instruct_md_behavior:
                 MDout = np.array([1, 0]) if association_level in ['90', '70', '50'] else np.array([0, 1])
@@ -199,7 +199,7 @@ class PFCMD():
                 else: # to ablate multi effect, fix MD pattern
                     self.MD2PFCMult = np.dot(self.wMD2PFCMult * config.MDamplification, np.array([0, 1]))
                 xadd = (1.+self.MD2PFCMult) * np.dot(self.Jrec, rout)
-                
+
                 # Additive MD input to PFC
                 if config.allow_add_effect:
                     xadd += np.dot(self.wMD2PFC , MDout)
@@ -212,8 +212,8 @@ class PFCMD():
                 input_from_ofc = np.dot(error_computations.wOFC2dlPFC , error_computations.vec_current_context )
                 ofc_to_pfc_mask = np.zeros_like(input_from_ofc)
                 ofc_to_pfc_mask[:config.allow_ofc_control_to_no_pfc] = np.ones_like(input_from_ofc)[:config.allow_ofc_control_to_no_pfc]
-                
-                xadd += config.ofc_to_MD_gating_variable * input_from_ofc * ofc_to_pfc_mask 
+
+                xadd += config.ofc_to_MD_gating_variable * input_from_ofc * ofc_to_pfc_mask
 
             if i < config.cuesteps:
                 # if MDeffect and useMult:
@@ -228,7 +228,7 @@ class PFCMD():
             if train and not config.MDreinforce:
                 # MD presynaptic traces evolve dyanamically during trial and across trials
                 # to decrease fluctuations.
-                self.MDpreTrace += 1./config.tsteps/10. * \
+                self.MDpreTrace += 1./(10.*config.tsteps) * \
                     (-self.MDpreTrace + rout)
                 MDlearningBias = config.MDlearningBiasFactor * \
                     np.mean(self.MDpreTrace)
@@ -238,7 +238,7 @@ class PFCMD():
                     MDout-0.5, self.MDpreTrace-MDlearningBias)
                 # Ali lowered to 0.01 from 1.
                 self.wPFC2MD = np.clip(
-                    self.wPFC2MD + config.MDlearningrate*wPFC2MDdelta,  -MDrange, MDrange)
+                    self.wPFC2MD + config.MDlearningrate*wPFC2MDdelta, -MDrange, MDrange)
                 # self.wMD2PFC = np.clip(self.wMD2PFC +fast_delta.T,-MDrange , MDrange ) # lowered from 10.
                 # self.wMD2PFCMult = np.clip(self.wMD2PFCMult+ slow_delta.T,-2*MDrange /self.G, 2*MDrange /self.G)
                 # self.wMD2PFCMult = np.clip(self.wMD2PFC,-2*MDrange /self.G, 2*MDrange /self.G) * self.MDamplification

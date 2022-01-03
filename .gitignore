@@ -1,3 +1,9 @@
+# venv
+bin/
+share/
+lib64
+lib/
+
 # mine:
 results/
 results2/
