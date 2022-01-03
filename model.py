@@ -229,7 +229,7 @@ class PFCMD():
             if train and not config.MDreinforce:
                 # MD presynaptic traces evolve dyanamically during trial and across trials
                 # to decrease fluctuations.
-                self.MDpreTrace += 1./(config.tsteps/10.) * \
+                self.MDpreTrace += 1./config.tsteps/10. * \
                     (-self.MDpreTrace + rout)
                 MDlearningBias = config.MDlearningBiasFactor * \
                     np.mean(self.MDpreTrace)
