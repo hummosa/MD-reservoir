@@ -59,6 +59,7 @@ class Config():
         self.MDamplification = 30.           # Factor by which MD amplifies PFC recurrent connections multiplicatively
         self.MDamplification_add = 1.           # Ampflication factor for the add gates. 1 by default. 
         self.MDlearningrate = 5e-5 #1e-4 # 1e-7   #Separate learning rate for Hebbian plasticity at MD-PFC synapses.
+        self.MDtau = 2000
         self.MDrange = 0.1                  # Allowable range for MD-PFC synapses.
         self.MDlearningBias = 0.3           # threshold for Hebbian learning. Biases pre*post activity.
         self.MDlearningBiasFactor = 1.     # Switched dynamic Bias calc based on average, this gets multiplied with running avg resulting in effective bias for hebbian learning.
