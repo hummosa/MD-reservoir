@@ -296,7 +296,6 @@ if __name__ == "__main__":
 
     pfcmd = PFCMD(config)
 
-
     if config.reLoadWeights:
         filename = 'dataPFCMD/data_reservoir_PFC_MD' + '_R'+str(pfcmd.RNGSEED) + '.shelve'
         pfcmd.load(filename)
@@ -309,4 +308,3 @@ if __name__ == "__main__":
     if config.saveData:
         pfcmd.save()
         pfcmd.fileDict.close()
-
