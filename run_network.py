@@ -14,6 +14,7 @@ from data_generator import data_generator
 import os
 import numpy as np
 import matplotlib as mpl
+import itertools
 
 mpl.rcParams['axes.spines.left'] = True
 mpl.rcParams['axes.spines.right'] = False
@@ -86,8 +87,7 @@ def train(pfcmd, data_gen, config):
             log.write(traini, PFCrates=routs, MDinputs=MDinps, MDrates=MDouts, Outrates=outs, Inputs=np.concatenate([cue, q_values]),
             Targets=target, MSEs=np.mean(errors*errors), model_obj=pfcmd)
         else:
-            log.write_basic(traini, PFCrates=routs.mean(0), MDinputs=MDinps.mean(0), MDrates=MDouts, Outrates=outs.mean(0), Inputs=np.concatenate([cue, q_values]),
-            Targets=target, MSEs=np.mean(errors*errors), model_obj=None)
+            log.write_basic(traini, PFCrates=routs.mean(0), MDinputs=MDinps.mean(0), MDrates=MDouts, Outrates=outs.mean(0), Inputs=np.concatenate([cue, q_values]), Targets=target, MSEs=np.mean(errors*errors), model_obj=None)
         # NOTE DEPRECATE THIS? Seems slow to save indivudla files and slow to load them later too.
         # Saves a data file per each trial
         # TODO possible variables to add for Mante & Sussillo condition analysis:
@@ -232,12 +232,15 @@ if __name__ == "__main__":
     elif args_dict['exp_type'] == 'HebbianLearning':
         config = HebbianLearning_config(args_dict)
         a_MDrange = [.02, .04, .06, .08, .1, .12, .14, .16, .18, .2]
-        a_MDlr    = [.01, .005, .001, .0005, .0001, 5e-5, .00001, .000005, .000001]
+        a_MDlr    = [.01, .005, .001, .0005, .0001, .00005, .00001, .000005, .000001]
         a_tau     = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000]
+        task_vars = list(itertools.product(a_MDrange, a_MDlr, a_tau)) #810 length
+        
         slurm_task_id = int(args.var1)
-        config.MDrange = a_MDrange[slurm_task_id-1]
-        config.MDlearningrate = float(a_MDlr[slurm_task_id-1])
-        config.tsteps = int(a_tau[slurm_task_id])
+        config.MDrange = task_vars[slurm_task_id-1][0]
+        config.MDlearningrate = float(task_vars[slurm_task_id-1][1])
+        config.MDtau = int(task_vars[slurm_task_id-1][2])
+        print("params --  ", "MDrange: ",  config.MDrange, ", MDlearningrate: ", config.MDlearningrate, ", MDtau: ", config.MDtau)
         config.save_detailed = False
 
     elif args_dict['exp_type'] == 'Compare_to_human_data':
