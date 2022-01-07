@@ -196,7 +196,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group = parser.add_argument("exp_name", default="temp",nargs='?',  type=str, help="pass a str for experiment name")
     group = parser.add_argument("seed", default=0, nargs='?',  type=float, help="simulation seed")
-    group = parser.add_argument("--var1", default=0, nargs='?', type=float, help="arg_1")
+    group = parser.add_argument("--var1", default=1, nargs='?', type=float, help="arg_1")
     group = parser.add_argument("--var2", default=30, nargs='?', type=float, help="arg_2")
     group = parser.add_argument("--var3", default=1.0, nargs='?', type=float, help="arg_3")
     group = parser.add_argument("--outdir", default="./results", nargs='?',  type=str, help="pass a str for data directory")
@@ -209,7 +209,7 @@ if __name__ == "__main__":
                 # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
                 'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
                 'exp_name': args.exp_name,
-                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][4], #
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][1], #
                 "save_data_by_trial": args.save_data_by_trial,
                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
@@ -217,13 +217,19 @@ if __name__ == "__main__":
     if args_dict['exp_type'] == 'MD_ablation':
         args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated
         config = MD_ablation_Config(args_dict)
-        config.MDamplification =  args.var2
-        # config.instruct_md_behavior = True
+        config.instruct_md_behavior = True
+        config.allow_value_inputs = False   # Turn off to prevent conflict wih instructed signal
+        data_runs = False
+        if data_runs:
+            config.variable_trials_per_block = [100] * 2
+            config.save_detailed = True
         if args.var1 == 0: # MD on
             pass
-        elif args.var1 == 1: # mul off
+        elif args.var1 == 1: # Add gates only
             config.allow_mul_effect = False
-        elif args.var1 == 2: # add off
+            config.MDamplification_add =  args.var2
+        elif args.var1 == 2: # Mul gates only
+            config.MDamplification =  args.var2
             config.allow_add_effect = False
         elif args.var1 == 3: # bot mul and add off
             config.allow_mul_effect = False

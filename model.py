@@ -202,9 +202,9 @@ class PFCMD():
 
                 # Additive MD input to PFC
                 if config.allow_add_effect:
-                    xadd += np.dot(self.wMD2PFC , MDout)
+                    xadd += np.dot(self.wMD2PFC * config.MDamplification_add, MDout)
                 else: # to ablate add effect, fix MD pattern
-                    xadd += np.dot(self.wMD2PFC , np.array([0, 1]))
+                    xadd += np.dot(self.wMD2PFC * config.MDamplification_add , np.array([0, 1]))
             else:
                 xadd = np.dot(self.Jrec, rout)
 

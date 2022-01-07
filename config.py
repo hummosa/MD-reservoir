@@ -57,6 +57,7 @@ class Config():
         self.MDeffect = True                # whether to have MD present or not
         self.MDremovalCompensationFactor = 1.3 # If MD effect is removed, excitation drops, multiply recurrent connection conductance by this factor to compensate
         self.MDamplification = 30.           # Factor by which MD amplifies PFC recurrent connections multiplicatively
+        self.MDamplification_add = 1.           # Ampflication factor for the add gates. 1 by default. 
         self.MDlearningrate = 5e-5 #1e-4 # 1e-7   #Separate learning rate for Hebbian plasticity at MD-PFC synapses.
         self.MDrange = 0.1                  # Allowable range for MD-PFC synapses.
         self.MDlearningBias = 0.3           # threshold for Hebbian learning. Biases pre*post activity.
