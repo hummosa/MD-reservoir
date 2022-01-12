@@ -8,10 +8,10 @@ class Config():
         #enviroment parameters:
         self.plotFigs = False
         self.debug = False
-        self.saveData = False
-        self.save_detailed = True
+        self.saveData = False #deprecated
+        self.save_detailed = False
         # self.figure_format =  'PDF' # self.figure_format =  'EPS'
-        self.figure_format =  'PNG'
+        self.figure_format =  'JPG'
         self.outdir = args_dict['outdir'] if 'outdir' in args_dict else './results/'
         self.RNGSEED = args_dict['seed'] if 'seed' in args_dict else 1
 
@@ -70,6 +70,9 @@ class Config():
         self.instruct_md_behavior = False   # to disable the effects of context discovery by hebbian learning. Istruct ideal MD behavior, and examine other parts of the model.
         self.allow_add_effect = True       # Set to False to ablate MD additive effects
         self.allow_mul_effect = True     # Set to False to ablate MD multiplicative effects
+        self.allow_fixed_mul_effect = False # allows to quickly alternative bewtee two ways of shutting down MD gates. False: remove completely. True: fix gates effects as if coming from one MD always (maintain effect on network but remove flexiblity)
+        self.allow_fixed_add_effect = False
+
         self.allow_value_inputs = True     # set to false to Zero out the weights of the value inputs
         self.allow_ofc_control_to_no_pfc = self.Npfc    # Limit ofc effect to certain no of PFC cells.
 
@@ -167,7 +170,7 @@ class MD_ablation_Config(Config):
 class HebbianLearning_config(Config):
     def __init__(self, args_dict={'MDrange': True, 'MDlearningrate': True, 'PreSynaptic_pretrace_time_constant': True}):
         super().__init__(args_dict)
-        self.variable_trials_per_block = [500] * 6
+        self.variable_trials_per_block = [500] * 4
         self.block_schedule = ['10', '90'] * 6 #* 6 #['30', '90', '10', '90', '70', '30', '10', '70']
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
 

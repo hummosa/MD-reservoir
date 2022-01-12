@@ -3,7 +3,7 @@
 #SBATCH -N 1
 #SBATCH -c 1
 #SBATCH --mem=12G
-#SBATCH --output=/om2/group/halassa/MD-reservoir_res-sab/hebbian_810/stdout/%j
+#SBATCH --output=./output/%j
 #SBATCH --job-name=$1
-#SBATCH --array=1-810%10
-python run_network.py $1 $2 --var1 $SLURM_ARRAY_TASK_ID 
+#SBATCH --array=1-200%100
+python run_network.py $1 --slurm_task_id $SLURM_ARRAY_TASK_ID --var3 4

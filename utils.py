@@ -13,12 +13,13 @@ class Logger(object):
             self.PFCrates = np.zeros((config.Ntrain, config.tsteps, config.Npfc))
             self.MDinputs = np.zeros((config.Ntrain, config.tsteps, config.Nmd))
             self.Outrates = np.zeros((config.Ntrain, config.tsteps, config.Nout))
+            self.MDrates = np.zeros((config.Ntrain, config.tsteps, config.Nmd))
         else:
             self.PFCrates = np.zeros((config.Ntrain,  config.Npfc))
             self.MDinputs = np.zeros((config.Ntrain,  config.Nmd))
             self.Outrates = np.zeros((config.Ntrain,  config.Nout))
+            self.MDrates = np.zeros((config.Ntrain,   config.Nmd))
 
-        self.MDrates = np.zeros((config.Ntrain, config.tsteps, config.Nmd))
         self.Inputs = np.zeros((config.Ntrain, config.Ninputs)) 
         self.Targets = np.zeros((config.Ntrain, config.Nout))
         self.MSEs = np.zeros(config.Ntrain)

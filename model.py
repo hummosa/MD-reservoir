@@ -136,7 +136,6 @@ class PFCMD():
         config.reinforce trains output weights
          using REINFORCE / node perturbation a la Miconi 2017.'''
         cues = np.zeros(shape=(config.tsteps, config.Ncues))
-
         xinp = np.random.uniform(0, 0.1, size=(config.Npfc))
         xadd = np.zeros(shape=(config.Npfc))
         MDinp = np.random.uniform(0, 0.1, size=config.Nmd)
@@ -170,7 +169,9 @@ class PFCMD():
             # Gather MD inputs
             if config.ofc_to_md_active and (i < config.ofc_timesteps_active):
                 input_from_ofc = np.dot(error_computations.wOFC2MD , error_computations.vec_current_context )
-                MDinp += config.ofc_to_MD_gating_variable * input_from_ofc
+                ofc_to_md_mask = np.zeros_like(input_from_ofc)
+                ofc_to_md_mask[:config.allow_ofc_control_to_no_pfc] = np.ones_like(input_from_ofc)[:config.allow_ofc_control_to_no_pfc]
+                MDinp += config.ofc_to_MD_gating_variable * input_from_ofc * ofc_to_md_mask
 
             if config.positiveRates:
                 MDinp += config.dt/config.tau * (-MDinp + np.dot(self.wPFC2MD, rout))
@@ -196,15 +197,20 @@ class PFCMD():
                 # Add multplicative amplification of recurrent inputs.
                 if config.allow_mul_effect:
                     self.MD2PFCMult = np.dot(self.wMD2PFCMult * config.MDamplification, MDout)
-                else: # to ablate multi effect, fix MD pattern
+                elif config.allow_fixed_mul_effect: # to ablate multi effect, fix MD pattern
                     self.MD2PFCMult = np.dot(self.wMD2PFCMult * config.MDamplification, np.array([0, 1]))
+                else: # completely remove mul effect.
+                    self.MD2PFCMult = np.dot(self.wMD2PFCMult * config.MDamplification, np.array([0, 0]))
                 xadd = (1.+self.MD2PFCMult) * np.dot(self.Jrec, rout)
 
                 # Additive MD input to PFC
                 if config.allow_add_effect:
                     xadd += np.dot(self.wMD2PFC * config.MDamplification_add, MDout)
-                else: # to ablate add effect, fix MD pattern
+                elif config.allow_fixed_add_effect: # to ablate add effect, fix MD pattern
                     xadd += np.dot(self.wMD2PFC * config.MDamplification_add , np.array([0, 1]))
+                else:
+                    xadd += np.dot(self.wMD2PFC * config.MDamplification_add , np.array([0, 0]))
+
             else:
                 xadd = np.dot(self.Jrec, rout)
 
