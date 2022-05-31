@@ -260,7 +260,11 @@ def plot_rates(pfcmd, rates, config):
         ax.set_title('Out 0 and 1')
 
     
-    
+def plot_sorted_weights(wPFC2MD):
+    import seaborn as sns
+    fig = plt.figure()
+    sns.heatmap(wPFC2MD[np.argsort(wPFC2MD[:,0])])
+    return(fig)
 
 def plot_weights(pfcmd, weights, config):
     wOuts, wPFC2MDs, wMD2PFCs, wMD2PFCMults, wJrecs, MDpreTraces = weights

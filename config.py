@@ -8,10 +8,10 @@ class Config():
         #enviroment parameters:
         self.plotFigs = False
         self.debug = False
-        self.saveData = False
-        self.save_detailed = True
+        self.saveData = False #deprecated
+        self.save_detailed = False
         # self.figure_format =  'PDF' # self.figure_format =  'EPS'
-        self.figure_format =  'PNG'
+        self.figure_format =  'JPG'
         self.outdir = args_dict['outdir'] if 'outdir' in args_dict else './results/'
         self.RNGSEED = args_dict['seed'] if 'seed' in args_dict else 1
 
@@ -57,7 +57,9 @@ class Config():
         self.MDeffect = True                # whether to have MD present or not
         self.MDremovalCompensationFactor = 1.3 # If MD effect is removed, excitation drops, multiply recurrent connection conductance by this factor to compensate
         self.MDamplification = 30.           # Factor by which MD amplifies PFC recurrent connections multiplicatively
+        self.MDamplification_add = 1.           # Ampflication factor for the add gates. 1 by default. 
         self.MDlearningrate = 5e-5 #1e-4 # 1e-7   #Separate learning rate for Hebbian plasticity at MD-PFC synapses.
+        self.MDtau = 2000
         self.MDrange = 0.1                  # Allowable range for MD-PFC synapses.
         self.MDlearningBias = 0.3           # threshold for Hebbian learning. Biases pre*post activity.
         self.MDlearningBiasFactor = 1.     # Switched dynamic Bias calc based on average, this gets multiplied with running avg resulting in effective bias for hebbian learning.
@@ -68,6 +70,9 @@ class Config():
         self.instruct_md_behavior = False   # to disable the effects of context discovery by hebbian learning. Istruct ideal MD behavior, and examine other parts of the model.
         self.allow_add_effect = True       # Set to False to ablate MD additive effects
         self.allow_mul_effect = True     # Set to False to ablate MD multiplicative effects
+        self.allow_fixed_mul_effect = False # allows to quickly alternative bewtee two ways of shutting down MD gates. False: remove completely. True: fix gates effects as if coming from one MD always (maintain effect on network but remove flexiblity)
+        self.allow_fixed_add_effect = False
+
         self.allow_value_inputs = True     # set to false to Zero out the weights of the value inputs
         self.allow_ofc_control_to_no_pfc = self.Npfc    # Limit ofc effect to certain no of PFC cells.
 
@@ -156,7 +161,7 @@ class MD_ablation_Config(Config):
             self.MDremovalCompensationFactor = 1.3
         self.allow_add_effect = args_dict['MD_add_effect']
         self.allow_mul_effect = args_dict['MD_mul_effect']
-        self.MD_mul_mean, self.MD_mul_std = args_dict['MD_mul_mean'], args_dict['MD_mul_std']
+        # self.MD_mul_mean, self.MD_mul_std = args_dict['MD_mul_mean'], args_dict['MD_mul_std']
         # self.MD_add_mean, self.MD_add_std = args_dict['MD_add_mean'], args_dict['MD_add_std']
         self.variable_trials_per_block = [500] * 6
         self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70']
@@ -165,18 +170,13 @@ class MD_ablation_Config(Config):
 class HebbianLearning_config(Config):
     def __init__(self, args_dict={'MDrange': True, 'MDlearningrate': True, 'PreSynaptic_pretrace_time_constant': True}):
         super().__init__(args_dict)
-        self.variable_trials_per_block = [500] * 6
+        self.variable_trials_per_block = [500] * 4
         self.block_schedule = ['10', '90'] * 6 #* 6 #['30', '90', '10', '90', '70', '30', '10', '70']
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
 
 class vmPFC_ablation_Config(Config):
-    def __init__(self, args_dict={'vmPFC_inputs': 'on'}):
+    def __init__(self, args_dict={}):
         super().__init__(args_dict)
-        if args_dict['vmPFC_inputs'] =='on':
-            self.allow_value_inputs = True
-        else:
-            self.allow_value_inputs = False
-
         self.variable_trials_per_block = [500] * 6
         self.block_schedule = ['10', '90'] * 6 #['30', '90', '10', '90', '70', '30', '10', '70']
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40

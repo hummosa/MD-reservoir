@@ -14,6 +14,7 @@ from data_generator import data_generator
 import os
 import numpy as np
 import matplotlib as mpl
+import itertools
 
 mpl.rcParams['axes.spines.left'] = True
 mpl.rcParams['axes.spines.right'] = False
@@ -86,8 +87,7 @@ def train(pfcmd, data_gen, config):
             log.write(traini, PFCrates=routs, MDinputs=MDinps, MDrates=MDouts, Outrates=outs, Inputs=np.concatenate([cue, q_values]),
             Targets=target, MSEs=np.mean(errors*errors), model_obj=pfcmd)
         else:
-            log.write_basic(traini, PFCrates=routs.mean(0), MDinputs=MDinps.mean(0), MDrates=MDouts, Outrates=outs.mean(0), Inputs=np.concatenate([cue, q_values]),
-            Targets=target, MSEs=np.mean(errors*errors), model_obj=None)
+            log.write_basic(traini, PFCrates=routs.mean(0), MDinputs=MDinps.mean(0), MDrates=MDouts.mean(0), Outrates=outs.mean(0), Inputs=np.concatenate([cue, q_values]), Targets=target, MSEs=np.mean(errors*errors), model_obj=None)
         # NOTE DEPRECATE THIS? Seems slow to save indivudla files and slow to load them later too.
         # Saves a data file per each trial
         # TODO possible variables to add for Mante & Sussillo condition analysis:
@@ -159,20 +159,29 @@ def train(pfcmd, data_gen, config):
             pfcmd.fig_monitor.savefig(
                 fn('monitor'), dpi=pltu.fig_dpi, facecolor='w', edgecolor='w', format=config.figure_format)
 
-    # last minute add MD modulation by context to config, to test for it prior to analysing data.
-    log.md_context_modulation = np.dot(config.context_vector, log.MDrates.mean(1)[:,0] )/ np.sum(config.context_vector>0) # normalize by no of trials for each context. Taking MD neuron 0 or 1 should be equal.
-    log.md_context_modulation = np.abs(log.md_context_modulation)
 
     if config.save_detailed:
         out_higher_mean = 1.*( np.mean( log.Outrates[:, :,0], axis=1) > np.mean( log.Outrates[:, :,1], axis=1) )
+        mdrates = log.MDrates.mean(1)
     else:
         out_higher_mean = 1.*( log.Outrates[:, 0] >  log.Outrates[ :,1] )
+        mdrates = log.MDrates
+
     Corrects = 1. * (log.Targets[:,0] == out_higher_mean)
     log.corrects = Corrects
 
-    np.save(fn('saved_Corrects')[:-4]+'.npy', log.corrects)
+    # last minute add MD modulation by context to config, to test for it prior to analysing data.
+    log.md_context_modulation = np.dot(config.context_vector, mdrates[:,0] )/ np.sum(config.context_vector>0) # normalize by no of trials for each context. Taking MD neuron 0 or 1 should be equal.
+    log.md_context_modulation = np.abs(log.md_context_modulation)
+    cue_vector = np.ones(np.sum(config.variable_trials_per_block))
+    cue_vector[log.Inputs[:,1] == 1] = -1
+    log.md_cue_modulation = np.abs( np.dot(cue_vector, log.MDrates.mean(1)[:,0]/np.sum(cue_vector>0)))
+
+    np.save(fn('saved_Corrects')[:-4]+'.npy', log.corrects) # Deprecated.Correctgs saved with log.
     np.save(fn('config')[:-4]+'.npy', config)
-    np.save(fn('log')[:-4]+'.npy', log, allow_pickle=True)
+    log_file =fn('log')[:-4]+'.npy'
+    np.save(log_file, log, allow_pickle=True)
+    print('log saved to :', log_file)
 
     if config.saveData:  # output massive weight and rate files
         import pickle
@@ -194,12 +203,13 @@ def train(pfcmd, data_gen, config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    group = parser.add_argument("exp_name", default="temp",nargs='?',  type=str, help="pass a str for experiment name")
+    group = parser.add_argument("exp_name", default="dynamic_eligibility_trace",nargs='?',  type=str, help="pass a str for experiment name")
     group = parser.add_argument("seed", default=0, nargs='?',  type=float, help="simulation seed")
-    group = parser.add_argument("--var1", default=1, nargs='?', type=float, help="arg_1")
-    group = parser.add_argument("--var2", default=30, nargs='?', type=float, help="arg_2")
-    group = parser.add_argument("--var3", default=1.0, nargs='?', type=float, help="arg_3")
+    group = parser.add_argument("--var1", default=2000, nargs='?', type=float, help="arg_1")
+    group = parser.add_argument("--var2", default=0.1, nargs='?', type=float, help="arg_2")
+    group = parser.add_argument("--var3", default=4, nargs='?', type=float, help="arg_3")
     group = parser.add_argument("--outdir", default="./results", nargs='?',  type=str, help="pass a str for data directory")
+    group = parser.add_argument("--slurm_task_id", default=0, nargs='?',  type=float, help="pass a slurm task id to pick parameters for job arrays")
     group = parser.add_argument("--save_data_by_trial", default=False, nargs='?',  type=str, help="pass True to save data by trial")
     args = parser.parse_args()
     # OpenMind shared directory: "/om2/group/halassa/PFCMD-ali-sabrina"
@@ -209,44 +219,96 @@ if __name__ == "__main__":
                 # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
                 'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
                 'exp_name': args.exp_name,
-                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][4], #
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][int(args.var3)], #
                 "save_data_by_trial": args.save_data_by_trial,
-                'vmPFC_inputs': 'on',
                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
-                'ofc_effect' : True, 'no_of_pfc_neurons_to_control': 500,
                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
 
     if args_dict['exp_type'] == 'MD_ablation':
         args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated
         config = MD_ablation_Config(args_dict)
-        # config.MDamplification =  args.var2
+     
+        #alternative job array workflow 
+        if args.slurm_task_id:
+            slurm_task_id = int(args.slurm_task_id)
+            seeds = list(range(10))
+            var1s = [1, 2]
+            var2s = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 10.0, 15.0, 20.0, 25.0, 30.0, 40.0]
+            var2s = [1.0,  3.0,  5.0, 10.0, 20.0, 40.0]
+            task_vars = list(itertools.product(seeds, var1s, var2s)) #320 length
+            print('no o fexperiments to run: ', len(task_vars))
+            args.seed, args.var1, args.var2 = task_vars[slurm_task_id-1]
+            args_dict.update( {'seed': args.seed,  'var1': args.var1, 'var2': args.var2, 'var3': args.var3})
         config.instruct_md_behavior = True
+        config.allow_value_inputs = False   # Turn off to prevent conflict wih instructed signal
+        data_runs = False
+        if data_runs:
+            config.variable_trials_per_block = [100] * 2
+            config.save_detailed = True
         if args.var1 == 0: # MD on
             pass
-        elif args.var1 == 1: # mul off
+        elif args.var1 == 1: # Add gates only
             config.allow_mul_effect = False
-        elif args.var1 == 2: # add off
+            config.allow_fixed_mul_effect = False
+            config.MDamplification_add =  args.var2
+        elif args.var1 == 2: # Mul gates only
+            config.MDamplification =  args.var2
             config.allow_add_effect = False
+            config.allow_fixed_add_effect = False
         elif args.var1 == 3: # bot mul and add off
             config.allow_mul_effect = False
             config.allow_add_effect = False
-
+    
     elif args_dict['exp_type'] == 'HebbianLearning':
+        #alternative job array workflow 
+        if args.slurm_task_id:
+            slurm_task_id = int(args.slurm_task_id)
+            seeds = list(range(10))
+            var1s   = [1, 5, 10, 50, 100, 200, 300,  400, 500, 600]
+            var2s   = [0.04, 0.08, 0.10, 0.12, 0.16, 0.20, ]
+            task_vars = list(itertools.product(seeds, var1s, var2s)) #810 length
+            print('no o fexperiments to run: ', len(task_vars))
+            # fsafdf
+            args.seed, args.var1, args.var2 = task_vars[slurm_task_id-1]
+            args_dict.update( {'seed': args.seed,  'var1': args.var1, 'var2': args.var2, 'var3': args.var3})
+            print({'seed': args.seed,  'var1': args.var1, 'var2': args.var2, 'var3': args.var3})
+        # a_MDrange = [.02, .04, .06, .08, .1, .12, .14, .16, .18, .2]
+        # a_MDlr    = [.01, .005, .001, .0005, .0001, .00005, .00001, .000005, .000001]
+        
         config = HebbianLearning_config(args_dict)
-        a_MDrange = [.02, .04, .06, .08, .1, .12, .14, .16, .18, .2]
-        a_MDlr    = [.01, .005, .001, .0005, .0001, 5e-5, .00001, .000005, .000001]
-        a_tau     = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000]
-        slurm_task_id = int(args.var1)
-        config.MDrange = a_MDrange[slurm_task_id-1]
-        config.MDlearningrate = float(a_MDlr[slurm_task_id-1])
-        config.tsteps = int(a_tau[slurm_task_id])
-        config.save_detailed = False
+
+        data_runs = True
+        if data_runs and (args.seed == 0):
+            config.save_detailed = True
+        
+        config.MDtau = int(args.var1)
+        config.MDrange = args.var2
+        # config.MDlearningrate = float(task_vars[slurm_task_id-1][1])
+        print("params --  ", "MDrange: ",  config.MDrange, ", MDlearningrate: ", config.MDlearningrate, ", MDtau: ", config.MDtau)
+        
+
+
+
 
     elif args_dict['exp_type'] == 'Compare_to_human_data':
         config = Compare_to_humans_config(args_dict)
+
     elif args_dict['exp_type'] == 'vmPFC_ablation':
         config = vmPFC_ablation_Config(args_dict)
-    elif args_dict['exp_type'] == 'OFC_ablation':
+        # args.var1 =0 
+        if args.var1 == 0:   # -vmPFC  
+            config.allow_value_inputs = False
+        elif args.var1 == 1: # +vmPFC  
+            config.allow_value_inputs = True
+        if args.var2 == 0: # -MD
+            config.allow_mul_effect = False
+            config.allow_add_effect = False
+        elif args.var2 == 1: # +MD
+            config.allow_mul_effect = True
+            config.allow_add_effect = True
+        # config.save_detailed = True
+
+    elif args_dict['exp_type'] == 'OFC_ablation': 
         config = OFC_control_Config(args_dict)
         # args.var1 = 2
         if args.var1 == 0: # OFC control off
@@ -260,15 +322,15 @@ if __name__ == "__main__":
             config.ofc_to_md_active = False
             config.ofc_to_PFC_active = True
             config.allow_mul_effect = False
-        elif args.var1 == 3: # OFC control is on goes to dlPFC, but both MD mul and add effect is off
+        elif args.var1 == 4: # OFC control is on goes to dlPFC, but both MD mul and add effect is off
             config.ofc_to_md_active = False
             config.ofc_to_PFC_active = True
             config.allow_mul_effect = False
             config.allow_add_effect = False
         config.ofc_effect_magnitude = 1.
         config.OFC2dlPFC_factor = 0.1 # OFC2dlPFC weights (with a norm of 1) need multiplied by 10 to be effective.
-        config.ofc_timesteps_active = int(args.var2) # 1 #apparantly 1 is enough.
-        config.allow_ofc_control_to_no_pfc =  config.Npfc #int(args.var2)
+        config.ofc_timesteps_active = 5 #int(args.var2) # use 5 as a comparison point.  #apparantly 1 is enough.
+        config.allow_ofc_control_to_no_pfc =  int(args.var2) #config.Npfc 
         config.OFC2dlPFC_lr  = 1e-3
     else:
         config = Config(args_dict)
@@ -282,7 +344,6 @@ if __name__ == "__main__":
 
     pfcmd = PFCMD(config)
 
-
     if config.reLoadWeights:
         filename = 'dataPFCMD/data_reservoir_PFC_MD' + '_R'+str(pfcmd.RNGSEED) + '.shelve'
         pfcmd.load(filename)
@@ -295,4 +356,3 @@ if __name__ == "__main__":
     if config.saveData:
         pfcmd.save()
         pfcmd.fileDict.close()
-
