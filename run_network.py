@@ -66,6 +66,13 @@ def train(pfcmd, data_gen, config):
         # q_values_before = ofc.get_v()
         error_computations.Sabrina_Q_values = ofc.get_v() # TODO: this is just a temp fix to get estimates from Sabrina's vmPFC.
 
+        if config.MD_delayed_lesion:
+            if blocki>3:# and blocki< 7:
+                config.MDeffect = False
+            else:
+                config.MDeffect = True
+
+
         _, routs, outs, MDouts, MDinps, errors = \
             pfcmd.run_trial(association_level, q_values, error_computations, cue, target, config, MDeffect=config.MDeffect,
                             train=config.train)
@@ -175,7 +182,7 @@ def train(pfcmd, data_gen, config):
     log.md_context_modulation = np.abs(log.md_context_modulation)
     cue_vector = np.ones(np.sum(config.variable_trials_per_block))
     cue_vector[log.Inputs[:,1] == 1] = -1
-    log.md_cue_modulation = np.abs( np.dot(cue_vector, log.MDrates.mean(1)[:,0]/np.sum(cue_vector>0)))
+    log.md_cue_modulation = np.abs( np.dot(cue_vector, mdrates[:,0]/np.sum(cue_vector>0)))
 
     np.save(fn('saved_Corrects')[:-4]+'.npy', log.corrects) # Deprecated.Correctgs saved with log.
     np.save(fn('config')[:-4]+'.npy', config)
@@ -203,11 +210,11 @@ def train(pfcmd, data_gen, config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    group = parser.add_argument("exp_name", default="dynamic_eligibility_trace",nargs='?',  type=str, help="pass a str for experiment name")
+    group = parser.add_argument("exp_name", default="extended_MD_perturbation",nargs='?',  type=str, help="pass a str for experiment name")
     group = parser.add_argument("seed", default=0, nargs='?',  type=float, help="simulation seed")
-    group = parser.add_argument("--var1", default=2000, nargs='?', type=float, help="arg_1")
+    group = parser.add_argument("--var1", default=1, nargs='?', type=float, help="arg_1")
     group = parser.add_argument("--var2", default=0.1, nargs='?', type=float, help="arg_2")
-    group = parser.add_argument("--var3", default=4, nargs='?', type=float, help="arg_3")
+    group = parser.add_argument("--var3", default=6, nargs='?', type=float, help="arg_3")
     group = parser.add_argument("--outdir", default="./results", nargs='?',  type=str, help="pass a str for data directory")
     group = parser.add_argument("--slurm_task_id", default=0, nargs='?',  type=float, help="pass a slurm task id to pick parameters for job arrays")
     group = parser.add_argument("--save_data_by_trial", default=False, nargs='?',  type=str, help="pass True to save data by trial")
@@ -219,7 +226,7 @@ if __name__ == "__main__":
                 # 'MDeffect': args.var1 , 'Gcompensation': args.var2, 'OFC_effect_magnitude': args.var3,
                 'var1': args.var1 , 'var2': args.var2, 'var3': args.var3, # just for later retrievcal
                 'exp_name': args.exp_name,
-                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning'][int(args.var3)], #
+                'exp_type': ['Compare_to_human_data', 'MD_ablation', 'vmPFC_ablation', 'OFC_ablation', 'HebbianLearning', 'wta_ablation', 'md_perturbation'][int(args.var3)], #
                 "save_data_by_trial": args.save_data_by_trial,
                 'MDeffect': True, 'MD_add_effect': True, 'MD_mul_effect': True,
                 } # 'MDlr': args.y,'switches': args.x,  'MDactive': args.z,
@@ -285,10 +292,6 @@ if __name__ == "__main__":
         config.MDrange = args.var2
         # config.MDlearningrate = float(task_vars[slurm_task_id-1][1])
         print("params --  ", "MDrange: ",  config.MDrange, ", MDlearningrate: ", config.MDlearningrate, ", MDtau: ", config.MDtau)
-        
-
-
-
 
     elif args_dict['exp_type'] == 'Compare_to_human_data':
         config = Compare_to_humans_config(args_dict)
@@ -327,11 +330,56 @@ if __name__ == "__main__":
             config.ofc_to_PFC_active = True
             config.allow_mul_effect = False
             config.allow_add_effect = False
+        elif args.var1 == 5: # OFC Continuous after second block to MD
+            config.ofc_effect_momentum = 1.
+        elif args.var1 == 6: # OFC Continuous after second block to dlPFC
+            config.ofc_effect_momentum = 1.
+            config.ofc_to_md_active = False
+            config.ofc_to_PFC_active = True
         config.ofc_effect_magnitude = 1.
         config.OFC2dlPFC_factor = 0.1 # OFC2dlPFC weights (with a norm of 1) need multiplied by 10 to be effective.
         config.ofc_timesteps_active = 5 #int(args.var2) # use 5 as a comparison point.  #apparantly 1 is enough.
-        config.allow_ofc_control_to_no_pfc =  int(args.var2) #config.Npfc 
+        config.allow_ofc_control_to_no_pfc = config.Npfc #  int(args.var2) 
         config.OFC2dlPFC_lr  = 1e-3
+
+    elif args_dict['exp_type'] == 'wta_ablation': 
+        config = Winner_take_all_Config(args_dict)
+        # args.var1 = 2
+        if args.var1 == 0: 
+            print(args.var1)
+        elif args.var1 == 1: # 
+            config.use_winner_take_all = False
+            config.use_L1_normalization = True
+        elif args.var1 == 2: #
+            config.use_winner_take_all = False
+            config.use_L1_normalization = False
+            config.use_independent_sigmoids = True
+    elif args_dict['exp_type'] == 'md_perturbation': 
+        args_dict.update({'MD_mul_mean': 0 , 'MD_mul_std': 0}) # These are still unused. The weights mean and std calculations in the code are too complicated
+        config = MD_ablation_Config(args_dict)
+        config.variable_trials_per_block = [500] * 16
+        config.block_schedule = ['10', '90'] * 16 #['30', '90', '10', '90', '70', '30', '10', '70']
+        config.ofc_control_schedule = ['off'] * 30  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
+
+        data_runs = False
+        if data_runs:
+            config.variable_trials_per_block = [100] * 2
+            config.save_detailed = True
+        if args.var1 == 0: # MD on
+            config.MDeffect = True
+
+        elif args.var1 == 1: # Train without MD
+            config.MDeffect = False
+            # config.allow_mul_effect = False
+            # config.allow_fixed_mul_effect = False
+            # config.MDamplification_add =  args.var2
+        elif args.var1 == 2: # Train with MD and then lesion 6 blocks into training
+            config.MDeffect = True
+            config.MD_delayed_lesion = True
+        elif args.var1 == 3: # bot mul and add off
+            config.allow_mul_effect = False
+            config.allow_add_effect = False
+    
     else:
         config = Config(args_dict)
 

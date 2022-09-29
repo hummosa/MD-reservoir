@@ -27,7 +27,7 @@ class Logger(object):
     def write_basic(self, traini, PFCrates,  MDinputs, MDrates, Outrates, Inputs, Targets, MSEs, model_obj):
         self.PFCrates[traini,  :] = PFCrates
         self.MDinputs[traini,  :] = MDinputs
-        self.MDrates[traini,:, :] = MDrates
+        self.MDrates[traini, :] = MDrates
         self.Outrates[traini,  :] = Outrates
         self.Inputs[traini, :] = Inputs
         self.Targets[traini, :] = Targets

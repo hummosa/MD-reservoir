@@ -22,7 +22,7 @@ class Config():
         #Experiment parameters:
         self.Ntasks = 2                     # Ambiguous variable name, replacing with appropriate ones below:  # number of contexts
         self.Ncontexts = 2                  # number of contexts (match block or non-match block)
-        self.trials_per_block = None #500
+        self.trials_per_block = None #500 # Deprecated
         self.variable_trials_per_block = [500, 500, 800, 600, 800, 600, 800, 600, 600, 800, 800, 600]
         #self.variable_trials_per_block = [500, 500, 400, 300, 400, 300, 400, 300, 300, 400, 400, 300]
         self.Nblocks = 10  # Deprecated                 # number of blocks for the simulation
@@ -63,8 +63,12 @@ class Config():
         self.MDrange = 0.1                  # Allowable range for MD-PFC synapses.
         self.MDlearningBias = 0.3           # threshold for Hebbian learning. Biases pre*post activity.
         self.MDlearningBiasFactor = 1.     # Switched dynamic Bias calc based on average, this gets multiplied with running avg resulting in effective bias for hebbian learning.
+        self.use_winner_take_all = True     
+        self.use_L1_normalization = False
+        self.use_independent_sigmoids = False
         self.cueFactor = 0.5 #args_dict['CueFactor']#0.5# 0.75  1.5 Ali halved it when I added cues going to both PFC regions, i.e two copies of input. But now working ok even with only one copy of input.
         self.delayed_response = 0 #50       # in ms, Reward model based on last 50ms of trial, if 0 take mean error of entire trial. Impose a delay between cue and stimulus.
+        self.MD_delayed_lesion = False # Used to simulate a limited MD lesion after initial MD training.
 
         # Model ablations:
         self.instruct_md_behavior = False   # to disable the effects of context discovery by hebbian learning. Istruct ideal MD behavior, and examine other parts of the model.
@@ -129,10 +133,18 @@ class Config():
 class Compare_to_humans_config(Config):
     def __init__(self, args_dict={}):
         super().__init__(args_dict)
-        self.trials_per_block = None #500
+        self.trials_per_block = None #500 #Deprecated 
         self.variable_trials_per_block = [500, 500, 800, 600, 800, 600, 800, 600, 600, 800, 800, 600]
         #self.variable_trials_per_block = [500, 500, 400, 300, 400, 300, 400, 300, 300, 400, 400, 300]
         self.block_schedule = ['90', '10', '90', '30', '50', '70', '10', '50', '90', '30', '70', '10']
+        self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
+
+class Winner_take_all_Config(Config):
+    def __init__(self, args_dict={}):
+        super().__init__(args_dict)
+        # self.variable_trials_per_block = [500, 500, 800, 600, 800, 600, 800, 600, 600, 800, 800, 600]
+        self.variable_trials_per_block = [500, 500, 500, 500, 500, 500, 500, 500, 500]
+        self.block_schedule = ['90', '10', '90', '30', '70', '10', '50', '90', '30', '70', '10']
         self.ofc_control_schedule = ['off'] * 14  # ['on'] *40  + ['match', 'non-match'] *1 + ['on'] *40
 
 class Paramater_search_Config(Config):

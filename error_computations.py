@@ -157,13 +157,15 @@ class Error_computations:
         self.trial_history.append(trial_type)
         if len(self.trial_history) > self.config.horizon: self.trial_history = self.trial_history[-self.horizon:]
 
-        horizon = [t == "MATCH" for t in self.trial_history]
-        choices = self.Sabrina_Q_values if self.current_context == "MATCH" else np.flip(self.Sabrina_Q_values)
-    #     print(horizon)
+        # horizon = [t == "MATCH" for t in self.trial_history]
+        # choices = self.Sabrina_Q_values if self.current_context == "MATCH" else np.flip(self.Sabrina_Q_values)
+        
+        # Current_reward is just wither the neural model was rewarded or not in this trial. 
         current_reward = target[np.argmax(choice.mean(axis=0))] # 1 if choice is correct, 0 otherwise
     #     print('cue: ', stimulus, ' target', target, ' choice: ', choice.mean(axis=0), ' argmax: ', np.argmax(choice.mean(axis=0)))
         self.p_reward = 0.98 * self.p_reward + 0.02 * current_reward 
-        choices = np.array([self.p_reward, 1-self.p_reward])
+        # choices: the value of available strategies
+        # choices = np.array([self.p_reward, 1-self.p_reward])
 
 
         # It should be: get current behavior (match vs non), and if matches current context belief (match vs non). 
@@ -171,6 +173,8 @@ class Error_computations:
         # Fast forward, get true "Match" "nonMatch" trials ground truth. Which I have already!!
         # horizon = trial_history == current_belief !!!!
         # stay_votes = np.choose(horizon, [1-p_reward, p_reward])
+
+        # Horizon is a list of bool values indicating wtither or not recent trials were match
         horizon = [t == self.current_context for t in self.trial_history]
         choices = np.array([1-self.p_reward, self.p_reward])
         stay_votes = np.choose(horizon, choices) #Makes no sense. It made sense when I had choices as v1 v2, but now it is p(r)

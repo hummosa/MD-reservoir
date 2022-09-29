@@ -36,8 +36,8 @@ if cuda:
 class PFCMD():
     def __init__(self, config, args_dict={}):
         # * Adjust network excitation levels based on MD effect, Positive Rates, and activation fxn
-        if not config.MDeffect:
-            config.G *= config.MDremovalCompensationFactor
+        # if not config.MDeffect:
+            # config.G *= config.MDremovalCompensationFactor
 
         # I don't want to have an if inside activation  as it is called at each time step of the simulation
         # But just defining within __init__ doesn't make it a member method of the class,
@@ -179,10 +179,18 @@ class PFCMD():
                 MDinp += config.dt/config.tau * 10. * (-MDinp + np.dot(self.wPFC2MD, (rout+1./2)))
 
             # winner take all on the MD hardcoded for config.Nmd = 2
-            if MDinp[0] > MDinp[1]:
-                MDout = np.array([1, 0])
-            else:
-                MDout = np.array([0, 1])
+            if config.use_winner_take_all:
+                if MDinp[0] > MDinp[1]:
+                    MDout = np.array([1, 0])
+                else:
+                    MDout = np.array([0, 1])
+            elif config.use_L1_normalization:
+                # MDout = 1.0/(1.0+np.exp(-MDinp))
+                # MDinp = (abs(MDinp) + MDinp) / 2  # relu
+                temp_MDinp = - min(MDinp) + MDinp # raise above min, to avoid neg values.
+                MDout = temp_MDinp/ sum(temp_MDinp) 
+            elif config.use_independent_sigmoids:
+                MDout = 1.0/(1.0+np.exp(-MDinp))
 
             ########### controlled MD behavior.
             if config.instruct_md_behavior:
@@ -212,7 +220,7 @@ class PFCMD():
                     xadd += np.dot(self.wMD2PFC * config.MDamplification_add , np.array([0, 0]))
 
             else:
-                xadd = np.dot(self.Jrec, rout)
+                xadd = np.dot(self.Jrec * config.MDremovalCompensationFactor, rout)
 
             if config.ofc_to_PFC_active and (i < config.ofc_timesteps_active):
                 input_from_ofc = np.dot(error_computations.wOFC2dlPFC , error_computations.vec_current_context )
